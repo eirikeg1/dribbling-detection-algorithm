@@ -11,5 +11,7 @@ cargo run
 
 # Running test code
 Testing and experimentation scripts were made in Jupyter notebooks. The dataset path must be added
-to the `.env` file.
-
+to the `.env` file like this:
+```.env
+DATASET_PATH=<DATA-PATH-HERE>
+```
