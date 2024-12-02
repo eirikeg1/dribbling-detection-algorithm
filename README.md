@@ -4,7 +4,7 @@
 This program is made for the soccernet game state reconstruction 2024 dataset.
 
 # Running the program
-The program can be run with:
+The program requires Rust and can be run with:
 ```Rust
 cargo run
 ```
