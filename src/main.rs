@@ -1,4 +1,4 @@
-use dribbling_detection_algorithm::config::Config;
+use dribbling_detection_algorithm::{config::Config, domain::dataset::Dataset};
 use std::fs;
 
 fn main() {
@@ -14,6 +14,16 @@ fn main() {
     println!("{:#?}", config);
 
     // Example of using config values
-    println!("Data Path: {}", config.general.data_path);
+    println!("Data Path: {}", config.data.data_path);
+    println!("Subsets: {:?} ", config.data.subsets);
     println!("Number of Cores: {}", config.general.num_cores);
+
+    let train_data = Dataset::new(config);
+    train_data
+        .load_all()
+        .unwrap_or_else(|err| println!("Error, could not load data: {}", err));
+
+
+    
 }
+
