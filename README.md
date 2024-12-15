@@ -9,9 +9,5 @@ The program requires Rust and can be run with:
 cargo run
 ```
 
-# Running test code
-Testing and experimentation scripts were made in Jupyter notebooks. The dataset path must be added
-to the `.env` file like this:
-```.env
-DATASET_PATH=<DATA-PATH-HERE>
-```
+# Configurations 
+Paths and system requirements (number of parallel cores etc) can be configured in config.toml
