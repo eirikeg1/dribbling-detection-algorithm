@@ -9,7 +9,7 @@
 **/*.rlib
 **/*.lock
 
-/Cargo.lock
+Cargo.lock
 
 # If you're using Rust coverage tools
 /coverage/
