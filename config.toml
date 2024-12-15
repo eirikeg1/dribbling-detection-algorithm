@@ -1,0 +1,12 @@
+[general]
+data_path = "/home/eirik/Projects/data"
+num_cores = 10  # Number of CPU cores to be used
+log_level = "info"  # Possible values: "debug", "info", "warn", "error"
+
+[dribbling_detection]
+threshold = 0.7  # Threshold for dribbling detection confidence
+frame_skip = 5
+min_dribble_duration = 1.5  # Minimum duration for an action to be classified as dribbling
+
+[paths]
+output_path = "data/output"
