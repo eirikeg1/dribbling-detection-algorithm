@@ -1,2 +1,65 @@
-/target
+# Environment variables
 .env
+.env.dev
+.env.prod
+
+# Rust-specific ignores
+/target/
+**/*.rs.bk
+**/*.rlib
+**/*.lock
+
+/Cargo.lock
+
+# If you're using Rust coverage tools
+/coverage/
+
+# Rust compile-time dependencies
+*.d
+
+# rustfmt temp files
+**/*.rs.bk
+
+# Rust Clippy and Rust Analyzer
+**/*.clippy
+**/clippy.toml
+**/rustfmt.toml
+
+# Rust docs (can be quite large)
+/doc/
+
+# Rust dumps
+*.dmp
+
+# Rust profiling files
+*.profraw
+*.profdata
+
+# Rust binaries
+**/*.exe
+**/*.out
+**/*.so
+**/*.dylib
+**/*.dll
+**/*.rlib
+**/*.a
+
+# Rust generated files
+/target/
+/build/
+/.idea/
+/.vscode/
+
+# VS Code-specific ignores
+/.vscode/
+/.history/
+/.settings/
+*.code-workspace
+
+# macOS and Linux
+.DS_Store
+*.swp
+*.swo
+*.swn
+*.tmp
+Thumbs.db
