@@ -18,12 +18,18 @@ fn main() {
     println!("Subsets: {:?} ", config.data.subsets);
     println!("Number of Cores: {}", config.general.num_cores);
 
-    let train_data = Dataset::new(config);
-    train_data
-        .load_all()
-        .unwrap_or_else(|err| println!("Error, could not load data: {}", err));
+    let dataset = Dataset::new(config);
+    // let valid_data = dataset
+    //     .load_subset(&"valid")
+    //     .expect("Error when loading valid");
 
-
+    let valid_iter = dataset.iter_subset(&"train");
+    for (i, video_data) in valid_iter.enumerate() {
+        if i % 1 == 0 {
+            println!("Processing {}", i);
+        }
+        // println!("VideoData: {:#?}", video_data);
+    }
     
 }
 
