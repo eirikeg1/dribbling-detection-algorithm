@@ -4,12 +4,9 @@
 .env.prod
 
 # Rust-specific ignores
-/target/
 **/*.rs.bk
 **/*.rlib
-**/*.lock
 
-Cargo.lock
 
 # If you're using Rust coverage tools
 /coverage/
