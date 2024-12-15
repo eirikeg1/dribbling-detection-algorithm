@@ -10,7 +10,7 @@ pub struct GeneralConfig {
 #[derive(Debug, Deserialize)]
 pub struct DribblingDetectionConfig {
     pub threshold: f64,
-    pub max_frame_skip: u32,
+    pub frame_skip: u32,
     pub min_dribble_duration: f64,
 }
 
