@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+opencv = "0.93.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8.18"
@@ -11,3 +12,6 @@ tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
 dotenv = "0.15"
 prettytable = "0.10"
 rayon = "1.10.0"
+
+[build-dependencies]
+proc-macro2 = "1.0"
