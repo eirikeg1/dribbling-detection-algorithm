@@ -2,57 +2,17 @@ use rayon::prelude::*; // For parallel processing
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufReader};
-use std::path::{Path, PathBuf};
-use serde::Deserialize;
-use serde_json::Value;
+use std::path::PathBuf;
 use crate::config::Config;
+use crate::domain::models::Labels;
 
-// Structure to represent an Image
-#[derive(Debug, Deserialize)]
-struct Image {
-    image_id: String,
-    file_name: String,
-    height: u32,
-    width: u32,
-}
-
-// Structure to represent an Annotation
-#[derive(Debug, Deserialize)]
-pub struct Annotation {
-    image_id: String,
-    category_id: u32,
-    track_id: Option<u32>,
-    bbox_image: Option<Value>,
-    bbox_pitch: Option<Value>,
-    attributes: Option<Attribute>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Attribute {
-    role: Option<String>,
-    jersey: Option<String>,
-    team: Option<String>
-}
-
-// Structure to represent the Labels JSON file
-#[derive(Debug, Deserialize)]
-pub struct Labels {
-    images: Vec<Image>,
-    annotations: Vec<Annotation>,
-}
+use super::models::VideoData;
 
 // Main Dataset class
 pub struct Dataset {
-    base_dir: PathBuf,
-    subsets: Vec<String>,
-    num_cores: usize,
-}
-
-#[derive(Debug)]
-pub struct VideoData {
-    pub dir_path: PathBuf,
-    pub image_paths: Vec<PathBuf>,
-    pub annotations: Vec<Annotation>,
+    pub base_dir: PathBuf,
+    pub subsets: Vec<String>,
+    pub num_cores: usize,
 }
 
 impl Dataset {
