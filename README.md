@@ -9,6 +9,8 @@ A Rust-based implementation for detecting dribbling events on the [SoccerNet Gam
 * The official challenge repository, with other instructions of how to download the data can be found at [sn-gamestate](https://github.com/SoccerNet/sn-gamestate)
 * Refer to the official [SoccerNet website](https://www.soccer-net.org/) for more information about soccernet and their challenges/datasets
 
+# Setup
+
 ## Configurations
 Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
 
@@ -45,9 +47,9 @@ Simply run:
 cargo run
 ```
 
-# Dribbling Detection Algorithm
+# Algorithm Description
 
-This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a drible.
+This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a drible. It is based on the players 2d coordinate on the field (after a homographic transform)
 
 ---
 
