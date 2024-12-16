@@ -12,6 +12,10 @@ tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
 dotenv = "0.15"
 prettytable = "0.10"
 rayon = "1.10.0"
+reqwest = { version = "0.12.9", features = ["stream"] }
+zip = "2.2.1"
+openssl = { version = "0.10", features = ["vendored"] }
+futures-util = "0.3.31"
 
 [build-dependencies]
 proc-macro2 = "1.0"

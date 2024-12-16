@@ -49,7 +49,7 @@ Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
 
 
 ## Building & Running
-   To download data:
+   To download data: (Not working yet, download as described above for now)
    ```bash
    cargo run -- --download
    ```
