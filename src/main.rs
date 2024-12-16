@@ -25,8 +25,8 @@ fn main() {
     //     .load_subset(&"valid")
     //     .expect("Error when loading valid");
 
-    let valid_iter = dataset.iter_subset(&"train");
-    for (i, video_data) in valid_iter.enumerate() {
+    let train_iter = dataset.iter_subset(&"train");
+    for (i, video_data) in train_iter.enumerate() {
         if i % 1 == 0 {
             println!("Processing {}", i);
         }
