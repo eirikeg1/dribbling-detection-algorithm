@@ -44,3 +44,78 @@ Simply run:
 ```bash
 cargo run
 ```
+
+# Dribbling Detection Algorithm
+
+This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation.
+
+## Initial Dataset
+The dataset includes videos annotated with 2D player positions relative to a homographical pitch.
+[Link to repo](https://github.com/SoccerNet/sn-gamestate)
+
+---
+
+## Conceptual Overview
+1. **Possession Identification**
+   - Tag the player closest to the ball as the possession holder.
+   - Use proximity-based possession determination.
+   - Consider integrating player velocity to improve possession tracking.
+   - Adjust proximity range dynamically if many players are nearby.
+
+2. **Proximity Zones**
+   - **Outer Radius (outer_rad)**: Defines a larger interaction zone.
+   - **Inner Radius (inner_rad)**: Defines a smaller, closer interaction zone.
+   - This two-zone approach creates a "spatial interaction" framework for detecting events like tackles or dribbles.
+
+3. **Event Detections**
+   - **Dribble**: When the possession holder retains the ball after defensive pressure for a set period.
+   - **Tackle**: When an opponent takes possession from the original possession holder.
+
+---
+
+## Algorithm Flow
+**(Currently focused on dribbling detection, not tackling detection)**
+
+1. **Initial Setup**
+   - Define `outer_rad` (player radius) and `inner_rad` (ball radius). 
+   - Consider homography to estimate distances.
+   - Create a `DribbleEvent` structure to store:
+     - Possession holder (player ID)
+     - Start and end frames
+     - List of frame numbers
+     - List of active defenders (player IDs)
+
+2. **State Transitions**
+   - **Search State**: 
+     1. Identify closest player to the ball.
+     2. Check if the ball is within the player's `inner_rad`.
+     3. Check for defenders within `inner_rad` or `outer_rad`.
+     4. If defenders are found, transition to **Start Track State**.
+
+   - **Start Track State**: 
+     1. Record start frame.
+     2. Add defenders within range to `active defenders`.
+     3. Create a `DribbleEvent` and move to **Track State 1**.
+
+   - **Track State 1 (Close Proximity to Defender)**: 
+     1. Add the current frame to the dribble event's frame list.
+     2. Add closest defender to active defenders.
+     3. If possession changes or the ball is too far from the player, cancel the event and return to **Search State**.
+     4. If any opponent enters `inner_rad`, transition to **Track State 2**.
+
+   - **Track State 2 (Duel)**: 
+     1. Freeze ball possession updates.
+     2. Stay in this state until only one player remains within `inner_rad`.
+     3. Transition to **Detection State**.
+
+   - **Detection State**: 
+     1. Identify possession holder.
+     2. If original possession holder still has possession, start a timer or frame counter.
+        - If possession is maintained for a set duration, a **Dribble** is detected.
+     3. If an opponent listed as an active defender gains possession, a **Tackle** is detected.
+     4. Save detections, if any, and return to **Search State**.
+
+---
+
+This logic aims to highlight potential dribbling clips, enabling faster dataset curation for training more robust dribbling detection models.
+
