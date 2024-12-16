@@ -27,7 +27,7 @@ pub struct Annotation {
 pub struct Attribute {
     pub role: Option<String>,
     pub jersey: Option<String>,
-    pub team: Option<String>
+    pub team: Option<String>,
 }
 
 // Structure to represent the Labels JSON file

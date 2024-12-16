@@ -1,10 +1,10 @@
+use crate::config::Config;
+use crate::domain::models::Labels;
 use rayon::prelude::*; // For parallel processing
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufReader};
 use std::path::PathBuf;
-use crate::config::Config;
-use crate::domain::models::Labels;
 
 use super::models::VideoData;
 
@@ -22,8 +22,11 @@ impl Dataset {
         let subsets = config.data.subsets.clone();
         let num_cores = config.general.num_cores as usize;
 
-        rayon::ThreadPoolBuilder::new().num_threads(num_cores).build_global().unwrap();
-        
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(num_cores)
+            .build_global()
+            .unwrap();
+
         Self {
             base_dir,
             subsets,
@@ -38,7 +41,7 @@ impl Dataset {
             eprintln!("Directory {:?} does not exist.", subset_dir);
             return Ok(());
         }
-        
+
         println!("Loading subset: '{}'", subset);
 
         fs::read_dir(&subset_dir)?.par_bridge().for_each(|entry| {
@@ -50,20 +53,27 @@ impl Dataset {
 
                 let labels_file = seq_dir.join("Labels-GameState.json");
                 if !labels_file.exists() {
-                    eprintln!("No labels file found for sequence {:?} in subset {}", seq_dir, subset);
+                    eprintln!(
+                        "No labels file found for sequence {:?} in subset {}",
+                        seq_dir, subset
+                    );
                     return;
                 }
 
                 if let Ok(file) = File::open(&labels_file) {
                     let reader = BufReader::new(file);
                     if let Ok(labels) = serde_json::from_reader::<_, Labels>(reader) {
-                        let image_id_to_file: HashMap<String, String> = labels.images
+                        let image_id_to_file: HashMap<String, String> = labels
+                            .images
                             .into_par_iter()
                             .map(|image| (image.image_id, image.file_name))
                             .collect();
 
                         labels.annotations.par_iter().for_each(|ann| {
-                            let file_name = image_id_to_file.get(&ann.image_id).cloned().unwrap_or_else(|| "Unknown".to_string());
+                            let file_name = image_id_to_file
+                                .get(&ann.image_id)
+                                .cloned()
+                                .unwrap_or_else(|| "Unknown".to_string());
                             println!(
                                 "Image ID: {}, File Name: {}, Category ID: {}",
                                 ann.image_id, file_name, ann.category_id
@@ -119,7 +129,8 @@ impl Dataset {
             let reader = BufReader::new(file);
             let labels: Labels = serde_json::from_reader(reader).ok()?;
 
-            let image_paths: Vec<PathBuf> = labels.images
+            let image_paths: Vec<PathBuf> = labels
+                .images
                 .iter()
                 .map(|image| seq_dir.join("img1").join(&image.file_name))
                 .collect();

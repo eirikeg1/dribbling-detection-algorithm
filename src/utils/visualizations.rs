@@ -16,10 +16,14 @@ pub fn visualize_video(video_path: &Path, annotations: &[Annotation]) -> opencv:
         let image_dir = video_path.join("img1");
         if !image_dir.is_dir() {
             eprintln!("Expected 'img1' directory inside {:?}", video_path);
-            return Err(opencv::Error::new(opencv::core::StsError, "No 'img1' directory found"));
+            return Err(opencv::Error::new(
+                opencv::core::StsError,
+                "No 'img1' directory found",
+            ));
         }
 
-        let mut image_paths: Vec<_> = fs::read_dir(&image_dir).map_err(|e| opencv::Error::new(opencv::core::StsError, format!("IO Error: {}", e)))?
+        let mut image_paths: Vec<_> = fs::read_dir(&image_dir)
+            .map_err(|e| opencv::Error::new(opencv::core::StsError, format!("IO Error: {}", e)))?
             .filter_map(Result::ok)
             .map(|e| e.path())
             .filter(|p| p.extension().and_then(|ext| ext.to_str()) == Some("jpg"))
@@ -29,7 +33,8 @@ pub fn visualize_video(video_path: &Path, annotations: &[Annotation]) -> opencv:
         image_paths.sort();
 
         for image_path in image_paths {
-            let mut frame = imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR)?;
+            let mut frame =
+                imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR)?;
             if frame.empty() {
                 continue;
             }
@@ -49,7 +54,10 @@ pub fn visualize_video(video_path: &Path, annotations: &[Annotation]) -> opencv:
         let mut capture = VideoCapture::from_file(video_path.to_str().unwrap(), CAP_ANY)?;
         if !capture.is_opened()? {
             eprintln!("Unable to open video: {:?}", video_path);
-            return Err(opencv::Error::new(opencv::core::StsError, "Unable to open video"));
+            return Err(opencv::Error::new(
+                opencv::core::StsError,
+                "Unable to open video",
+            ));
         }
 
         let mut frame = opencv::core::Mat::default();
@@ -72,7 +80,10 @@ pub fn visualize_video(video_path: &Path, annotations: &[Annotation]) -> opencv:
 }
 
 /// Draw bounding box annotations onto the given frame
-fn draw_annotations(frame: &mut opencv::core::Mat, annotations: &[Annotation]) -> opencv::Result<()> {
+fn draw_annotations(
+    frame: &mut opencv::core::Mat,
+    annotations: &[Annotation],
+) -> opencv::Result<()> {
     for annotation in annotations {
         if let Some(bbox) = &annotation.bbox_image {
             if let Some(array) = bbox.as_array() {

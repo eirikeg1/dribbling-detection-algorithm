@@ -1,14 +1,16 @@
-use dribbling_detection_algorithm::{config::Config, domain::{dataset::Dataset, models::VideoData}, utils::visualizations::visualize_video};
+use dribbling_detection_algorithm::{
+    config::Config,
+    domain::{dataset::Dataset, models::VideoData},
+    utils::visualizations::visualize_video,
+};
 use std::fs;
 
 fn main() {
     // Load the configuration file
-    let config_content = fs::read_to_string("config.toml")
-        .expect("Unable to read the config file");
+    let config_content = fs::read_to_string("config.toml").expect("Unable to read the config file");
 
     // Parse the TOML file into a Config struct
-    let config: Config = toml::from_str(&config_content)
-        .expect("Unable to parse the config file");
+    let config: Config = toml::from_str(&config_content).expect("Unable to parse the config file");
 
     // Print the configuration to verify
     println!("{:#?}", config);
@@ -34,6 +36,4 @@ fn main() {
     }
 
     // visualize
-    
 }
-
