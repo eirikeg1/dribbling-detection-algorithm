@@ -1,6 +1,6 @@
 use dribbling_detection_algorithm::{
     config::Config,
-    domain::{dataset::Dataset, models::VideoData},
+    domain::dataset::Dataset,
     utils::visualizations::visualize_video,
 };
 use std::fs;

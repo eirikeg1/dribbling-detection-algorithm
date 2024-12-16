@@ -1,4 +1,4 @@
-use opencv::core::{Point, Scalar};
+use opencv::core::Scalar;
 use opencv::highgui;
 use opencv::imgcodecs;
 use opencv::imgproc;
