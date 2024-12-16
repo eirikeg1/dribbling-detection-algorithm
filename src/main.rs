@@ -1,39 +1,47 @@
+use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::{
-    config::Config,
-    domain::dataset::Dataset,
-    utils::visualizations::visualize_video,
+    config::Config, domain::data::dataset::Dataset, utils::visualizations::visualize_video
 };
 use std::fs;
+use std::env;
+use tokio::runtime::Runtime;
+
 
 fn main() {
+    // Check for command-line arguments
+    let args: Vec<String> = env::args().collect();
+    let should_download = args.contains(&"--download".to_string());
+
+    if should_download {
+        println!("Data download initiated...");
+        let config_content = fs::read_to_string("config.toml").expect("Unable to read the config file");
+        let config: Config = toml::from_str(&config_content).expect("Unable to parse the config file");
+
+        // Use Tokio runtime to run async code
+        let rt = Runtime::new().unwrap();
+        rt.block_on(download_and_extract_dataset(&config));
+        println!("Data download complete.");
+    }
+
+    println!("Continuing with regular execution...");
+    
     // Load the configuration file
     let config_content = fs::read_to_string("config.toml").expect("Unable to read the config file");
-
-    // Parse the TOML file into a Config struct
     let config: Config = toml::from_str(&config_content).expect("Unable to parse the config file");
 
-    // Print the configuration to verify
+    // Example: Print loaded configuration
     println!("{:#?}", config);
 
-    // Example of using config values
-    println!("Data Path: {}", config.data.data_path);
-    println!("Subsets: {:?} ", config.data.subsets);
-    println!("Number of Cores: {}", config.general.num_cores);
-
     let dataset = Dataset::new(config);
-    // let valid_data = dataset
-    //     .load_subset(&"valid")
-    //     .expect("Error when loading valid");
-
     let train_iter = dataset.iter_subset(&"train");
     for (i, video_data) in train_iter.enumerate() {
         if i % 1 == 0 {
             println!("Processing {}", i);
         }
         let video_data = video_data.unwrap();
-        visualize_video(&video_data.dir_path, video_data.annotations.as_slice()).unwrap();
-        // println!("VideoData: {:#?}", video_data);
+        visualize_video(
+            &video_data.dir_path,
+            video_data.annotations.as_slice()
+        ).unwrap();
     }
-
-    // visualize
 }

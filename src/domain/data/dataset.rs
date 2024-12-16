@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::domain::models::Labels;
+use crate::domain::data::models::Labels;
 use rayon::prelude::*; // For parallel processing
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use super::models::VideoData;
 
 // Main Dataset class
+#[derive(Clone, Debug)]
 pub struct Dataset {
     pub base_dir: PathBuf,
     pub subsets: Vec<String>,

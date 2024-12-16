@@ -7,7 +7,7 @@ use opencv::videoio::{VideoCapture, CAP_ANY};
 use std::fs;
 use std::path::Path;
 
-use crate::domain::models::Annotation;
+use crate::domain::data::models::Annotation;
 
 /// Visualize annotations on a video file or a directory of image frames
 pub fn visualize_video(video_path: &Path, annotations: &[Annotation]) -> opencv::Result<()> {

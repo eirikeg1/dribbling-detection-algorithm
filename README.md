@@ -10,6 +10,7 @@ A Rust-based implementation for detecting dribbling events on the [SoccerNet Gam
 * Refer to the official [SoccerNet website](https://www.soccer-net.org/) for more information about soccernet and their challenges/datasets
 
 # Setup
+The setup is described for ubuntu based systems
 
 ## Configurations
 Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
@@ -19,7 +20,8 @@ Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
 - **Rust** (latest stable recommended)
 - **OpenCV** (3.4 or 4.x)  
   Ensure OpenCV and its development headers are installed on your system. If automatic detection fails, the project’s `build.rs` ensures correct linking of OpenCV (including `stdc++`).
-
+- **OpenSSL**
+   Is a dependency of the reqwest library, used for downloading dataset
 
 ## Installation
 
@@ -32,7 +34,13 @@ Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
    sudo apt-get update
    sudo apt-get install libopencv-dev pkg-config cmake
    ```
-3. **Clone the repository**
+3. **Install openssl**
+   * Debian and ubuntu:
+   ```bash
+   sudo apt-get install pkg-config libssl-dev
+   ```
+   * [Other](https://docs.rs/openssl/latest/openssl/)
+4. **Clone the repository**
     ```bash
     git clone https://github.com/yourusername/dribbling-detection-algorithm.git
     cd dribbling-detection-algorithm
@@ -41,8 +49,13 @@ Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
 
 
 ## Building & Running
+   To download data:
+   ```bash
+   cargo run -- --download
+   ```
 
-Simply run:
+
+To run the algorithm:
 ```bash
 cargo run
 ```
