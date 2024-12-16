@@ -47,11 +47,7 @@ cargo run
 
 # Dribbling Detection Algorithm
 
-This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation.
-
-## Initial Dataset
-The dataset includes videos annotated with 2D player positions relative to a homographical pitch.
-[Link to repo](https://github.com/SoccerNet/sn-gamestate)
+This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a drible.
 
 ---
 
