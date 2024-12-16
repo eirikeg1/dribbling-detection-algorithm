@@ -1,4 +1,4 @@
-use dribbling_detection_algorithm::{config::Config, domain::dataset::Dataset};
+use dribbling_detection_algorithm::{config::Config, domain::{dataset::Dataset, models::VideoData}, utils::visualizations::visualize_video};
 use std::fs;
 
 fn main() {
@@ -28,8 +28,12 @@ fn main() {
         if i % 1 == 0 {
             println!("Processing {}", i);
         }
+        let video_data = video_data.unwrap();
+        visualize_video(&video_data.dir_path, video_data.annotations.as_slice()).unwrap();
         // println!("VideoData: {:#?}", video_data);
     }
+
+    // visualize
     
 }
 
