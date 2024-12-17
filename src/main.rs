@@ -1,6 +1,6 @@
 use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::{
-    config::Config, domain::data::dataset::Dataset, utils::visualizations::visualize_video
+    config::Config, domain::data::dataset::Dataset, utils::visualizations::visualize_or_store_video
 };
 use std::fs;
 use std::env;
@@ -11,6 +11,7 @@ fn main() {
     // Check for command-line arguments
     let args: Vec<String> = env::args().collect();
     let should_download = args.contains(&"--download".to_string());
+    
 
     if should_download {
         println!("Data download initiated...");
@@ -32,16 +33,26 @@ fn main() {
     // Example: Print loaded configuration
     println!("{:#?}", config);
 
-    let dataset = Dataset::new(config);
+    let video_mode: &String = &config.general.video_mode;
+    let output_path: &String = &config.data.output_path;
+
+
+    let dataset = Dataset::new(config.clone());
     let train_iter = dataset.iter_subset(&"train");
+    
+
     for (i, video_data) in train_iter.enumerate() {
         if i % 1 == 0 {
             println!("Processing {}", i);
         }
         let video_data = video_data.unwrap();
-        visualize_video(
-            &video_data.dir_path,
-            video_data.annotations.as_slice()
+        visualize_or_store_video(
+            std::path::Path::new(&format!("{}/img1", video_data.dir_path.display())),
+            video_data.labels.annotations.as_slice(),
+            video_data.labels.images.as_slice(),
+            video_mode.as_str(),
+            output_path.as_str(),
+            &format!("video_{}", i),
         ).unwrap();
     }
 }

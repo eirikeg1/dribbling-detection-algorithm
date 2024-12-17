@@ -139,7 +139,7 @@ impl Dataset {
             Some(Ok(VideoData {
                 dir_path: seq_dir,
                 image_paths,
-                annotations: labels.annotations,
+                labels: labels,
             }))
         });
 

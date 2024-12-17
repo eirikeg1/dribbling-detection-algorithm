@@ -1,3 +1,6 @@
+# Outputs
+data/*
+
 # Environment variables
 .env
 .env.dev
