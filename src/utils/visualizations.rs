@@ -5,23 +5,13 @@ use opencv::videoio::VideoWriter;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use crate::config::Config;
 use crate::domain::data::models::Image;
 use crate::domain::data::models::{Annotation, BboxImage, BboxPitch};
 use opencv::core::{self, Rect, Scalar, Size, Mat};
 use opencv::{imgproc, prelude::*};
 
-// Constants for minimap size and position
-const MINIMAP_X: i32 = 10;
-const MINIMAP_Y: i32 = 10;
-const MINIMAP_WIDTH: i32 = 200;
-const MINIMAP_HEIGHT: i32 = 100;
-
-// Pitch coordinate ranges for transforming pitch coords onto minimap
-// Adjust these as necessary for your coordinate system:
-const X_MIN: f64 = -60.0;
-const X_MAX: f64 = 60.0;
-const Y_MIN: f64 = -34.0;
-const Y_MAX: f64 = 34.0;
+use super::annotations::draw_annotations;
 
 pub fn visualize_or_store_video(
     image_dir: &Path,
@@ -29,7 +19,8 @@ pub fn visualize_or_store_video(
     images: &[Image],
     mode: &str,
     output_path: &str,
-    file_name: &str
+    file_name: &str,
+    config: &Config
 ) -> opencv::Result<()> {
 
     let image_map: HashMap<String, String> = images
@@ -90,7 +81,7 @@ pub fn visualize_or_store_video(
         
         let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
 
-        draw_annotations(&mut frame, annotations, image_id)?;
+        draw_annotations(&mut frame, annotations, image_id, config)?;
 
         if mode == "download" {
             process_download_mode(&mut writer, &frame)?;
@@ -116,7 +107,7 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
         let writer = VideoWriter::new(
             video_path.to_str().unwrap(),
             opencv::videoio::VideoWriter::fourcc('m', 'p', '4', 'v')?,
-            30.0,
+            20.0,
             frame_size,
             true,
         )?;
@@ -152,98 +143,4 @@ fn process_visualization_mode(frame: &opencv::core::Mat) -> opencv::Result<()> {
     Ok(())
 }
 
-pub fn draw_annotations(
-    frame: &mut Mat,
-    annotations: &[Annotation],
-    image_id: &String,
-) -> opencv::Result<()> {
 
-    let annotations: Vec<Annotation> = annotations.into_iter()
-        .filter(|ann| ann.image_id == image_id.to_string())
-        .cloned()
-        .collect();
-
-
-    let annotations: &[Annotation] = &annotations;
-
-    // Draw bounding boxes on the main frame
-    for annotation in annotations.into_iter() {
-        if let Some(bbox_image) = &annotation.bbox_image {
-            draw_bbox_image(frame, bbox_image)?;
-        }
-    }
-
-    // Create the minimap
-    let mut minimap = Mat::zeros(MINIMAP_HEIGHT, MINIMAP_WIDTH, frame.typ())?.to_mat()?;
-    // Fill minimap with gray color
-    imgproc::rectangle(
-        &mut minimap,
-        Rect::new(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT),
-        Scalar::new(128.0, 128.0, 128.0, 0.0),
-        -1,
-        imgproc::LINE_8,
-        0,
-    )?;
-
-    // Draw pitch coordinates onto the minimap
-    for annotation in annotations {
-        if let Some(bbox_pitch) = &annotation.bbox_pitch {
-            draw_pitch_point_on_minimap(&mut minimap, bbox_pitch.x_bottom_middle, bbox_pitch.y_bottom_middle)?;
-        }
-    }
-
-    // Now create an overlay the size of the entire frame and place the minimap in it
-    let mut overlay = Mat::zeros(frame.rows(), frame.cols(), frame.typ())?.to_mat()?;
-    let rows = minimap.rows();
-    let cols = minimap.cols();
-    for r in 0..rows {
-        for c in 0..cols {
-            let pixel = minimap.at_2d::<core::Vec3b>(r, c)?;
-            *overlay.at_2d_mut::<core::Vec3b>(MINIMAP_Y + r, MINIMAP_X + c)? = *pixel;
-        }
-    }
-
-    // Blend the overlay with the main frame
-    let mut frame_clone = frame.clone();
-    core::add_weighted(&frame_clone, 1.0, &overlay, 0.3, 0.0, frame, -1)?;
-
-    Ok(())
-}
-
-fn draw_bbox_image(frame: &mut Mat, bbox_image: &BboxImage) -> opencv::Result<()> {
-    let x = bbox_image.x as i32;
-    let y = bbox_image.y as i32;
-    let w = bbox_image.w as i32;
-    let h = bbox_image.h as i32;
-
-    let rect = Rect::new(x, y, w, h);
-    imgproc::rectangle(
-        frame,
-        rect,
-        Scalar::new(0.0, 0.0, 255.0, 0.0), // Red
-        2,
-        imgproc::LINE_8,
-        0,
-    )?;
-    Ok(())
-}
-
-fn draw_pitch_point_on_minimap(minimap: &mut Mat, pitch_x: f64, pitch_y: f64) -> opencv::Result<()> {
-    // Convert pitch coordinates to minimap coordinates
-    let mx = ((pitch_x - X_MIN) / (X_MAX - X_MIN)) * (MINIMAP_WIDTH as f64);
-    let my = ((pitch_y - Y_MIN) / (Y_MAX - Y_MIN)) * (MINIMAP_HEIGHT as f64);
-
-    // Draw a white circle at the transformed point
-    let point = core::Point::new(mx as i32, my as i32);
-    imgproc::circle(
-        minimap,
-        point,
-        3,
-        Scalar::new(255.0, 255.0, 255.0, 0.0), // White
-        -1,
-        imgproc::LINE_8,
-        0,
-    )?;
-
-    Ok(())
-}

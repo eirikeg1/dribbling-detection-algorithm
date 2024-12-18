@@ -53,6 +53,7 @@ fn main() {
             video_mode.as_str(),
             output_path.as_str(),
             &format!("video_{}", i),
+            &config
         ).unwrap();
     }
 }
