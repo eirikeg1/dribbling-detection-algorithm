@@ -1,5 +1,5 @@
-use reqwest::{Client, Response};
 use futures_util::StreamExt;
+use reqwest::{Client, Response};
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::Path;
@@ -30,18 +30,28 @@ async fn download_large_file(url: &str, local_path: &str) {
 
     let status = response.status();
     if !status.is_success() {
-        let error_message = response.text().await.unwrap_or_else(|_| "Failed to get error message".to_string());
-        panic!("Failed to download file. Status: {}. Message: {}", status, error_message);
+        let error_message = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Failed to get error message".to_string());
+        panic!(
+            "Failed to download file. Status: {}. Message: {}",
+            status, error_message
+        );
     }
 
-    let mut file = TokioFile::create(local_path).await.expect("Failed to create local file");
+    let mut file = TokioFile::create(local_path)
+        .await
+        .expect("Failed to create local file");
     let mut stream = response.bytes_stream();
 
     let mut total_downloaded = 0;
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.expect("Error while downloading file chunk");
         total_downloaded += chunk.len();
-        file.write_all(&chunk).await.expect("Failed to write chunk to file");
+        file.write_all(&chunk)
+            .await
+            .expect("Failed to write chunk to file");
 
         if total_downloaded % (1024 * 1024) == 0 {
             println!("Downloaded {} MB...", total_downloaded / (1024 * 1024));
@@ -50,7 +60,11 @@ async fn download_large_file(url: &str, local_path: &str) {
 
     // Ensure all writes are fully flushed before moving on
     file.flush().await.expect("Failed to flush file");
-    println!("Download complete: {} ({} MB)", local_path, total_downloaded / (1024 * 1024));
+    println!(
+        "Download complete: {} ({} MB)",
+        local_path,
+        total_downloaded / (1024 * 1024)
+    );
 }
 
 /// Extracts a ZIP file from disk and saves contents to a directory
@@ -61,7 +75,10 @@ fn extract_zip(zip_path: &str, output_dir: &str) -> io::Result<()> {
     let mut buffer = [0; 2];
     file.read_exact(&mut buffer)?;
     if &buffer != b"PK" {
-        panic!("The file is not a valid ZIP archive. First two bytes: {:?}", buffer);
+        panic!(
+            "The file is not a valid ZIP archive. First two bytes: {:?}",
+            buffer
+        );
     }
 
     let mut archive = ZipArchive::new(File::open(zip_path)?)?;
@@ -99,7 +116,10 @@ pub async fn download_and_extract_dataset(config: &Config) {
         let dataset_url = format!("{}&split={}", config.data.huggingface_dataset_url, subset);
 
         // 2. Download large ZIP file (streamed directly to disk)
-        println!("Starting download of {} dataset from: {}", subset, dataset_url);
+        println!(
+            "Starting download of {} dataset from: {}",
+            subset, dataset_url
+        );
         download_large_file(&dataset_url, &zip_file_path).await;
 
         // 3. Validate and Extract the ZIP file to the output directory

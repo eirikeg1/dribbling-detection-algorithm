@@ -1,15 +1,15 @@
+use crate::config::Config;
+use crate::domain::data::models::Annotation;
+use crate::domain::data::models::Image;
+use opencv::core::{self, Mat};
 use opencv::highgui;
 use opencv::imgcodecs;
 use opencv::prelude::*;
 use opencv::videoio::VideoWriter;
+use opencv::{imgproc, prelude::*};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::config::Config;
-use crate::domain::data::models::Image;
-use crate::domain::data::models::{Annotation};
-use opencv::core::{self, Mat};
-use opencv::{imgproc, prelude::*};
 
 use super::annotations::draw_annotations;
 use super::image_operations::scale_frame;
@@ -21,7 +21,7 @@ pub fn visualize_or_store_video(
     mode: &str,
     output_path: &str,
     file_name: &str,
-    config: &Config
+    config: &Config,
 ) -> opencv::Result<()> {
     let image_map: HashMap<String, String> = images
         .iter()
@@ -39,8 +39,12 @@ pub fn visualize_or_store_video(
     // Create the output directory if it does not exist
     let output_dir_path = Path::new(output_path);
     if !output_dir_path.exists() {
-        fs::create_dir_all(output_dir_path)
-            .map_err(|e| opencv::Error::new(opencv::core::StsError, format!("Failed to create output directory: {}", e)))?;
+        fs::create_dir_all(output_dir_path).map_err(|e| {
+            opencv::Error::new(
+                opencv::core::StsError,
+                format!("Failed to create output directory: {}", e),
+            )
+        })?;
     }
 
     let mut image_paths: Vec<_> = fs::read_dir(image_dir)
@@ -93,18 +97,25 @@ pub fn visualize_or_store_video(
 
         frame_count += 1;
     }
-    
+
     if let Some(ref mut writer) = writer {
         writer.release()?;
-        eprintln!("VideoWriter released for file: {} with {} frames", video_path.display(), frame_count);
+        eprintln!(
+            "VideoWriter released for file: {} with {} frames",
+            video_path.display(),
+            frame_count
+        );
     }
-    
+
     Ok(())
 }
 
 fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Result<VideoWriter> {
     let frame_size = frame.size()?;
-    eprintln!("Initializing VideoWriter with frame size: {:?}x{:?}", frame_size.width, frame_size.height);
+    eprintln!(
+        "Initializing VideoWriter with frame size: {:?}x{:?}",
+        frame_size.width, frame_size.height
+    );
 
     if frame_size.width > 0 && frame_size.height > 0 {
         let writer = VideoWriter::new(
@@ -116,18 +127,27 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
             true,
         )?;
         if !writer.is_opened()? {
-            eprintln!("VideoWriter failed to open for path: {}", video_path.display());
+            eprintln!(
+                "VideoWriter failed to open for path: {}",
+                video_path.display()
+            );
         }
         Ok(writer)
     } else {
         Err(opencv::Error::new(
             opencv::core::StsError,
-            format!("Frame size is zero, skipping writer initialization for path: {}", video_path.display()),
+            format!(
+                "Frame size is zero, skipping writer initialization for path: {}",
+                video_path.display()
+            ),
         ))
     }
 }
 
-fn process_download_mode(writer: &mut Option<VideoWriter>, frame: &opencv::core::Mat) -> opencv::Result<()> {
+fn process_download_mode(
+    writer: &mut Option<VideoWriter>,
+    frame: &opencv::core::Mat,
+) -> opencv::Result<()> {
     if let Some(ref mut writer) = writer {
         writer.write(frame).map_err(|e| {
             eprintln!("Failed to write frame: {:?}", e);
@@ -141,7 +161,8 @@ fn process_download_mode(writer: &mut Option<VideoWriter>, frame: &opencv::core:
 
 fn process_visualization_mode(frame: &opencv::core::Mat) -> opencv::Result<()> {
     highgui::imshow("Image Sequence Visualization", frame)?;
-    if highgui::wait_key(30)? == 113 { // Break loop on 'q' key press
+    if highgui::wait_key(30)? == 113 {
+        // Break loop on 'q' key press
         return Ok(());
     }
     Ok(())

@@ -1,15 +1,15 @@
+use crate::config::Config;
+use crate::domain::data::models::Image;
+use crate::domain::data::models::{Annotation, BboxImage, BboxPitch};
+use opencv::core::{self, Mat, Rect, Scalar, Size};
 use opencv::highgui;
 use opencv::imgcodecs;
 use opencv::prelude::*;
 use opencv::videoio::VideoWriter;
+use opencv::{imgproc, prelude::*};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::config::Config;
-use crate::domain::data::models::Image;
-use crate::domain::data::models::{Annotation, BboxImage, BboxPitch};
-use opencv::core::{self, Rect, Scalar, Size, Mat};
-use opencv::{imgproc, prelude::*};
 
 pub fn draw_annotations(
     frame: &mut Mat,
@@ -23,20 +23,14 @@ pub fn draw_annotations(
         .cloned()
         .collect();
 
-
     let scale_factor = config.visualization.scale_factor;
     // Scale the frame before extending
     // scale_frame(frame, scale_factor)?;
-    
+
     // Draw bounding boxes on the main frame
     for annotation in annotations.iter() {
         if let Some(bbox_image) = &annotation.bbox_image {
-            draw_bbox_image(
-                frame, 
-                bbox_image,
-                scale_factor,
-                get_team_color(&annotation),
-            )?;
+            draw_bbox_image(frame, bbox_image, scale_factor, get_team_color(&annotation))?;
         }
     }
 
@@ -79,7 +73,12 @@ pub fn draw_annotations(
 
     // Copy the minimap to the extended frame below the main frame
     let minimap_x_offset = (frame.cols() - minimap_width) / 2; // Center horizontally
-    let roi_minimap = Rect::new(minimap_x_offset, frame.rows(), minimap_width, minimap_height);
+    let roi_minimap = Rect::new(
+        minimap_x_offset,
+        frame.rows(),
+        minimap_width,
+        minimap_height,
+    );
     let mut extended_roi_minimap = Mat::roi_mut(&mut extended_frame, roi_minimap)?;
     minimap.copy_to(&mut extended_roi_minimap)?;
 
@@ -90,13 +89,13 @@ pub fn draw_annotations(
 }
 
 fn get_team_color(annotation: &Annotation) -> Scalar {
-    let team_id =&annotation.attributes.as_ref().unwrap().team;
+    let team_id = &annotation.attributes.as_ref().unwrap().team;
 
     // Determine color based on team_id
     match team_id.as_deref() {
         Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0), // Blue for team A
         Some("right") => Scalar::new(0.0, 255.0, 0.0, 255.0), // Green for team B
-        _ => Scalar::new(255.0, 0.0, 0.0, 255.0), // Default: Red
+        _ => Scalar::new(255.0, 0.0, 0.0, 255.0),            // Default: Red
     }
 }
 
@@ -118,12 +117,11 @@ fn scale_frame(frame: &mut Mat, scale: f64) -> opencv::Result<()> {
     Ok(())
 }
 
-
 fn draw_bbox_image(
     frame: &mut Mat,
     bbox_image: &BboxImage,
     scale: f64,
-    color: Scalar
+    color: Scalar,
 ) -> opencv::Result<()> {
     let x = (bbox_image.x as f64 * scale) as i32;
     let y = (bbox_image.y as f64 * scale) as i32;
@@ -131,14 +129,7 @@ fn draw_bbox_image(
     let h = (bbox_image.h as f64 * scale) as i32;
 
     let rect = Rect::new(x, y, w, h);
-    imgproc::rectangle(
-        frame,
-        rect,
-        color,
-        1,
-        imgproc::LINE_8,
-        0,
-    )?;
+    imgproc::rectangle(frame, rect, color, 1, imgproc::LINE_8, 0)?;
     Ok(())
 }
 
@@ -162,15 +153,7 @@ fn draw_pitch_point_on_minimap(
 
     // Draw opaque circles onto the minimap
     let point = core::Point::new(mx, my);
-    imgproc::circle(
-        minimap,
-        point,
-        4,
-        color,
-        -1,
-        imgproc::LINE_8,
-        0,
-    )?;
+    imgproc::circle(minimap, point, 4, color, -1, imgproc::LINE_8, 0)?;
 
     Ok(())
 }

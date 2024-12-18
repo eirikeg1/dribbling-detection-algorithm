@@ -1,7 +1,7 @@
+use crate::config::Config;
 use opencv::core::{Mat, Size, StsError};
 use opencv::imgproc;
 use opencv::prelude::MatTraitConst;
-use crate::config::Config;
 
 pub fn scale_frame(frame: &mut Mat, config: &Config) -> opencv::Result<()> {
     let scale = config.visualization.scale_factor;
