@@ -1,7 +1,7 @@
 [general]
 num_cores = 10  # Number of CPU cores to be used
 log_level = "info"  # Possible values: "debug", "info", "warn", "error"
-video_mode = "display" # Possible values: "download", "display" (If using SSH display might be slow)
+video_mode = "download" # Possible values: "download", "display" (If using SSH display might be slow)
 
 [dribbling_detection]
 threshold = 0.7  # Threshold for dribbling detection confidence
@@ -11,7 +11,7 @@ inner_radius = 3 # Percent of screen from ball
 outer_radius = 7
 
 [visualization]
-scale_factor = 0.4 # Scale factor for video and player bounding boxes
+scale_factor = 0.4 # Scale factor for video and player bounding boxes. Usually best to keep at 1 if downloading
 minimap_x = 20
 minimap_y = 200
 minimap_width = 600

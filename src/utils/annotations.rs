@@ -26,7 +26,7 @@ pub fn draw_annotations(
 
     let scale_factor = config.visualization.scale_factor;
     // Scale the frame before extending
-    scale_frame(frame, scale_factor)?;
+    // scale_frame(frame, scale_factor)?;
     
     // Draw bounding boxes on the main frame
     for annotation in annotations.iter() {
