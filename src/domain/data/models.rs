@@ -1,8 +1,6 @@
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-use serde::Deserialize;
-use serde_json::Value;
 
 // Structure to represent an Image
 #[derive(Clone, Debug, Deserialize)]
@@ -54,7 +52,7 @@ pub struct LinePoint {
 }
 
 // Structure to represent an Annotation
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct Annotation {
     pub image_id: String,
     pub category_id: u32,

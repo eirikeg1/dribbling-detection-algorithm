@@ -1,7 +1,7 @@
 use futures_util::StreamExt;
-use reqwest::{Client, Response};
+use reqwest::Client;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::path::Path;
 use tokio::fs::File as TokioFile;
 use tokio::io::AsyncWriteExt;

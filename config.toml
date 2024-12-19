@@ -1,7 +1,7 @@
 [general]
 num_cores = 10  # Number of CPU cores to be used
 log_level = "info"  # Possible values: "debug", "info", "warn", "error"
-video_mode = "download" # Possible values: "download", "display" (If using SSH display might be slow)
+video_mode = "display" # Possible values: "download", "display" (If using SSH display might be slow)
 
 [dribbling_detection]
 threshold = 0.7  # Threshold for dribbling detection confidence

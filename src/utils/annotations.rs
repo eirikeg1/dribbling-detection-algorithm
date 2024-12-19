@@ -1,15 +1,8 @@
 use crate::config::Config;
-use crate::domain::data::models::Image;
-use crate::domain::data::models::{Annotation, BboxImage, BboxPitch};
+use crate::domain::data::models::{Annotation, BboxImage};
 use opencv::core::{self, Mat, Rect, Scalar, Size};
-use opencv::highgui;
-use opencv::imgcodecs;
+use opencv::imgproc;
 use opencv::prelude::*;
-use opencv::videoio::VideoWriter;
-use opencv::{imgproc, prelude::*};
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 pub fn draw_annotations(
     frame: &mut Mat,

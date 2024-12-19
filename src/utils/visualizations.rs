@@ -1,18 +1,16 @@
 use crate::config::Config;
 use crate::domain::data::models::Annotation;
 use crate::domain::data::models::Image;
-use opencv::core::{self, Mat};
 use opencv::highgui;
 use opencv::imgcodecs;
 use opencv::prelude::*;
 use opencv::videoio::VideoWriter;
-use opencv::{imgproc, prelude::*};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::annotations::draw_annotations;
-use super::image_operations::scale_frame;
+use super::image_calculations::scale_frame;
 
 pub fn visualize_or_store_video(
     image_dir: &Path,

@@ -27,20 +27,20 @@ pub struct DribbleDetector {
 // impl DribbleDetector {
 //     pub fn new(config: &DribblingDetectionConfig) -> Self { ... }
 
-//     pub fn detect_dribbles(&self, video_data: &VideoData) -> Vec<DribbleEvent> {
+//     pub fn detect_dribbles(&self, video_data: &impl Iterator<Item = Result<VideoData>>) -> Vec<DribbleEvent> {
 //         let mut state = DribbleState::Search;
 //         let mut dribble_events = Vec::new();
 
-//         for frame in video_data.frames {
+//         for (i, frame) in video_data.enumerate() {
 //             match state {
 //                 DribbleState::Search => { /* Find ball possession */ }
-//                 DribbleState::StartTrack => { /* Initialize dribble */ }
-//                 DribbleState::TrackClose => { /* Track defenders */ }
-//                 DribbleState::TrackDuel => { /* Freeze possession updates */ }
-//                 DribbleState::Detection => { /* Detect dribble completion */ }
+//                 // DribbleState::StartTrack => { /* Initialize dribble */ }
+//                 // DribbleState::TrackClose => { /* Track defenders */ }
+//                 // DribbleState::TrackDuel => { /* Freeze possession updates */ }
+//                 // DribbleState::Detection => { /* Detect dribble completion */ }
 //             }
 //         }
-
+//         frameframe
 //         dribble_events
 //     }
 // }
