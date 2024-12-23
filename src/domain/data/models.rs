@@ -2,6 +2,25 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct Info {
+    pub version: String,
+    pub game_id: String,
+    pub num_tracklets: String,
+    pub action_position: String,
+    pub action_class: String,
+    pub visibility: String,
+    pub game_time_start: String,
+    pub game_time_stop: String,
+    pub clip_start: String,
+    pub clip_stop: String,
+    pub name: String,
+    pub im_dir: Option<String>,
+    pub frame_rate: u32,
+    pub seq_length: u32,
+    pub im_ext: String,
+}
+
 // Structure to represent an Image
 #[derive(Clone, Debug, Deserialize)]
 pub struct Image {
@@ -75,6 +94,7 @@ pub struct Attribute {
 // Structure to represent the Labels JSON file
 #[derive(Clone, Debug, Deserialize)]
 pub struct Labels {
+    pub info: Info,
     pub images: Vec<Image>,
     pub annotations: Vec<Annotation>,
 }

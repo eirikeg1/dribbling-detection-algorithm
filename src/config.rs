@@ -19,7 +19,7 @@ pub struct DataConfig {
 pub struct DribblingDetectionConfig {
     pub threshold: f64,
     pub frame_skip: u32,
-    pub min_dribble_duration: f64,
+    pub min_duration: f64,
     pub inner_radius: f64,
     pub outer_radius: f64,
 }

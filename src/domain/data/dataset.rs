@@ -109,31 +109,47 @@ impl Dataset {
         if !subset_dir.exists() {
             return Box::new(std::iter::empty()) as Box<dyn Iterator<Item = io::Result<VideoData>>>;
         }
-
         let entries = match fs::read_dir(&subset_dir) {
-            Ok(entries) => entries.collect::<Result<Vec<_>, _>>().unwrap_or_default(),
-            Err(_) => vec![],
+            Ok(entries) => {
+                let vec_entries: Vec<_> = entries.collect::<Result<Vec<_>, _>>().unwrap_or_else(|err| {
+                    eprintln!("Failed to read directory {:?}: {}", subset_dir, err);
+                    vec![]
+                });
+                vec_entries
+            }
+            Err(err) => {
+                eprintln!("Could not read directory {:?}: {}", subset_dir, err);
+                vec![]
+            }
         };
+        
 
         let iter = entries.into_iter().filter_map(move |entry| {
             let seq_dir = entry.path();
             if !seq_dir.is_dir() {
                 return None;
             }
-
+            
             let labels_file = seq_dir.join("Labels-GameState.json");
             if !labels_file.exists() {
+                println!("No labels file found for sequence {:?}", seq_dir);
                 return None;
             }
-
             let file = File::open(&labels_file).ok()?;
             let reader = BufReader::new(file);
-            let labels: Labels = serde_json::from_reader(reader).ok()?;
-
+            let labels: Labels = match serde_json::from_reader(reader) {
+                Ok(labels) => labels,
+                Err(err) => {
+                    eprintln!("Failed to deserialize JSON file {:?}: {}", labels_file, err);
+                    return None;
+                }
+            };
+            
+            let image_dir = labels.clone().info.im_dir.unwrap_or("img1".to_string());
             let image_paths: Vec<PathBuf> = labels
                 .images
                 .iter()
-                .map(|image| seq_dir.join("img1").join(&image.file_name))
+                .map(|image| seq_dir.join(&image_dir).join(&image.file_name))
                 .collect();
 
             Some(Ok(VideoData {

@@ -44,8 +44,10 @@ fn main() {
             println!("Processing {}", i);
         }
         let video_data = video_data.unwrap();
+        let image_dir = video_data.labels.info.im_dir.clone();
+
         visualize_or_store_video(
-            std::path::Path::new(&format!("{}/img1", video_data.dir_path.display())),
+            std::path::Path::new(&format!("{}/{}", video_data.dir_path.display(), image_dir.unwrap_or("img1".to_string()))),
             video_data.labels.annotations.as_slice(),
             video_data.labels.images.as_slice(),
             video_mode.as_str(),

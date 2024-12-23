@@ -6,7 +6,7 @@ video_mode = "display" # Possible values: "download", "display" (If using SSH di
 [dribbling_detection]
 threshold = 0.7  # Threshold for dribbling detection confidence
 frame_skip = 5
-min_dribble_duration = 1.5  # Minimum duration for an action to be classified as dribbling
+min_duration = 1.5  # Minimum duration for an action to be classified as dribbling
 inner_radius = 3 # Percent of screen from ball
 outer_radius = 7
 
@@ -27,3 +27,4 @@ data_path = "/home/eirik/Projects/data/SoccerNetGS"
 subsets = ["train"]
 output_path = "data/output"
 huggingface_dataset_url = "https://datasets-server.huggingface.co/first-rows?dataset=SoccerNet%2FSN-GSR-2025&config=default"
+ 
