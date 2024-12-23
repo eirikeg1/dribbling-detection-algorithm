@@ -1,4 +1,18 @@
+use opencv::core::Scalar;
+
 use crate::domain::data::models::Annotation;
+
+
+pub fn get_team_color(annotation: &Annotation) -> Scalar {
+    let team_id = &annotation.attributes.as_ref().unwrap().team;
+
+    // Determine color based on team_id
+    match team_id.as_deref() {
+        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0), // Blue for team A
+        Some("right") => Scalar::new(0.0, 255.0, 0.0, 255.0), // Green for team B
+        _ => Scalar::new(255.0, 0.0, 0.0, 255.0),            // Default: Red
+    }
+}
 
 /// Finds the closest annotation to the base annotation
 pub fn annotation_comparator(

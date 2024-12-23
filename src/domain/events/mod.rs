@@ -1,2 +1,2 @@
-pub mod drible_detection;
-pub mod actuators;
+pub mod drible_detector;
+pub mod drible_models;

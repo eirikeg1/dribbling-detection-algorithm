@@ -4,6 +4,8 @@ use opencv::core::{self, Mat, Rect, Scalar, Size};
 use opencv::imgproc;
 use opencv::prelude::*;
 
+use super::annotation_calculations::get_team_color;
+
 pub fn draw_annotations(
     frame: &mut Mat,
     annotations: &[Annotation],
@@ -78,35 +80,6 @@ pub fn draw_annotations(
     // Replace the original frame with the extended frame
     *frame = extended_frame;
 
-    Ok(())
-}
-
-fn get_team_color(annotation: &Annotation) -> Scalar {
-    let team_id = &annotation.attributes.as_ref().unwrap().team;
-
-    // Determine color based on team_id
-    match team_id.as_deref() {
-        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0), // Blue for team A
-        Some("right") => Scalar::new(0.0, 255.0, 0.0, 255.0), // Green for team B
-        _ => Scalar::new(255.0, 0.0, 0.0, 255.0),            // Default: Red
-    }
-}
-
-fn scale_frame(frame: &mut Mat, scale: f64) -> opencv::Result<()> {
-    let new_size = Size {
-        width: (frame.cols() as f64 * scale) as i32,
-        height: (frame.rows() as f64 * scale) as i32,
-    };
-    let mut resized_frame = Mat::default();
-    imgproc::resize(
-        &*frame,
-        &mut resized_frame,
-        new_size,
-        0.0,
-        0.0,
-        imgproc::INTER_LINEAR,
-    )?;
-    *frame = resized_frame;
     Ok(())
 }
 
