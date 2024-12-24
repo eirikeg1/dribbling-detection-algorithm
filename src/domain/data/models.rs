@@ -24,10 +24,13 @@ pub struct Info {
 // Structure to represent an Image
 #[derive(Clone, Debug, Deserialize)]
 pub struct Image {
+    pub is_labeled: bool,
     pub image_id: String,
     pub file_name: String,
     pub height: u32,
     pub width: u32,
+    pub has_labeled_person: bool,
+    pub has_labeled_pitch: bool,
 }
 
 // Represents the image-space bounding box
@@ -73,9 +76,11 @@ pub struct LinePoint {
 // Structure to represent an Annotation
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct Annotation {
+    pub id: String,
     pub image_id: String,
-    pub category_id: u32,
     pub track_id: Option<u32>,
+    pub supercategory: String,
+    pub category_id: u32,
     pub bbox_image: Option<BboxImage>,
     pub bbox_pitch: Option<BboxPitch>,
     pub bbox_pitch_raw: Option<BboxPitchRaw>,
@@ -91,12 +96,21 @@ pub struct Attribute {
     pub team: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct Category {
+    pub supercategory: String,
+    pub id: u32,
+    pub name: String,
+    pub lines: Option<Vec<String>>,
+}
+
 // Structure to represent the Labels JSON file
 #[derive(Clone, Debug, Deserialize)]
 pub struct Labels {
     pub info: Info,
     pub images: Vec<Image>,
     pub annotations: Vec<Annotation>,
+    pub categories: Vec<Category>,
 }
 
 #[derive(Clone, Debug)]

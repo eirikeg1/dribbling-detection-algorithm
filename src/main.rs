@@ -1,4 +1,6 @@
 use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
+use dribbling_detection_algorithm::domain::data::models::Annotation;
+use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
 use dribbling_detection_algorithm::{
     config::Config, domain::data::dataset::Dataset, utils::visualizations::visualize_or_store_video,
 };
@@ -38,6 +40,10 @@ fn main() {
 
     let dataset = Dataset::new(config.clone());
     let train_iter = dataset.iter_subset(&"train");
+    let inner_rad = config.dribbling_detection.inner_radius;
+    let outer_rad = config.dribbling_detection.outer_radius;
+
+    let dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
 
     for (i, video_data) in train_iter.enumerate() {
         if i % 1 == 0 {
@@ -45,6 +51,20 @@ fn main() {
         }
         let video_data = video_data.unwrap();
         let image_dir = video_data.labels.info.im_dir.clone();
+        println!("Processing video: {}", video_data.dir_path.display());
+
+        // let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
+        // let players = todo!("Get the player annotations from the config file");
+        // let ball_id: u32 = todo!("Get the ball id from the config file");
+        // let ball_annotations: Vec<Annotation> = annotations
+        //     .iter()
+        //     .filter(|a| a.category_id == ball_id)
+        //     .cloned()
+        //     .collect();
+        
+        // let frame = todo!("Load the frame from the video data");
+        
+        // dribble_detector.process_frame(frame);
 
         visualize_or_store_video(
             std::path::Path::new(&format!("{}/{}", video_data.dir_path.display(), image_dir.unwrap_or("img1".to_string()))),
