@@ -111,10 +111,13 @@ impl Dataset {
         }
         let entries = match fs::read_dir(&subset_dir) {
             Ok(entries) => {
-                let vec_entries: Vec<_> = entries.collect::<Result<Vec<_>, _>>().unwrap_or_else(|err| {
-                    eprintln!("Failed to read directory {:?}: {}", subset_dir, err);
-                    vec![]
-                });
+                let vec_entries: Vec<_> =
+                    entries
+                        .collect::<Result<Vec<_>, _>>()
+                        .unwrap_or_else(|err| {
+                            eprintln!("Failed to read directory {:?}: {}", subset_dir, err);
+                            vec![]
+                        });
                 vec_entries
             }
             Err(err) => {
@@ -122,14 +125,13 @@ impl Dataset {
                 vec![]
             }
         };
-        
 
         let iter = entries.into_iter().filter_map(move |entry| {
             let seq_dir = entry.path();
             if !seq_dir.is_dir() {
                 return None;
             }
-            
+
             let labels_file = seq_dir.join("Labels-GameState.json");
             if !labels_file.exists() {
                 println!("No labels file found for sequence {:?}", seq_dir);
@@ -144,7 +146,7 @@ impl Dataset {
                     return None;
                 }
             };
-            
+
             let image_dir = labels.clone().info.im_dir.unwrap_or("img1".to_string());
             let image_paths: Vec<PathBuf> = labels
                 .images

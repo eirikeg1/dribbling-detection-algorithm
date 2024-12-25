@@ -2,7 +2,6 @@ use opencv::core::Scalar;
 
 use crate::domain::data::models::Annotation;
 
-
 pub fn get_team_color(annotation: &Annotation) -> Scalar {
     let team_id = &annotation.attributes.as_ref().unwrap().team;
 

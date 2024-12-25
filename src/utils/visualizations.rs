@@ -1,119 +1,118 @@
 use crate::config::Config;
 use crate::domain::data::models::Annotation;
-use crate::domain::data::models::Image;
-use opencv::highgui;
-use opencv::imgcodecs;
-use opencv::prelude::*;
-use opencv::videoio::VideoWriter;
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use opencv::{
+    core::{Mat, Size},
+    highgui, imgcodecs,
+    prelude::*,
+    videoio::VideoWriter,
+};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
-use super::annotations::draw_annotations;
-use super::image_calculations::scale_frame;
+use super::{annotations::draw_annotations, image_calculations::scale_frame};
 
-pub fn visualize_or_store_video(
-    image_dir: &Path,
-    annotations: &[Annotation],
-    images: &[Image],
-    mode: &str,
-    output_path: &str,
-    file_name: &str,
-    config: &Config,
-) -> opencv::Result<()> {
-    let image_map: HashMap<String, String> = images
-        .iter()
-        .map(|image| (image.file_name.clone(), image.image_id.clone()))
-        .collect();
+/// A builder to handle video creation or visualization,
+/// allowing you to add frames, one at a time.
+pub struct VisualizationBuilder<'a> {
+    mode: &'a str,
+    output_path: PathBuf,
+    config: &'a Config,
+    writer: Option<VideoWriter>,
+    frame_count: usize,
+}
 
-    if !image_dir.is_dir() {
-        eprintln!("Expected directory but found none at {:?}", image_dir);
-        return Err(opencv::Error::new(
-            opencv::core::StsError,
-            "Directory not found",
-        ));
+impl<'a> VisualizationBuilder<'a> {
+    pub fn new(mode: &'a str, file_name: &'a str, config: &'a Config) -> opencv::Result<Self> {
+        let output_dir_path = Path::new(&config.data.output_path);
+
+        if !output_dir_path.exists() {
+            fs::create_dir_all(output_dir_path).map_err(|e| {
+                opencv::Error::new(
+                    opencv::core::StsError,
+                    format!("Failed to create output directory: {}", e),
+                )
+            })?;
+        }
+
+        let output_path = output_dir_path.join(format!("{}.avi", file_name));
+
+        println!("Output path: {}", output_path.display());
+        println!("File name: {}", file_name);
+        Ok(Self {
+            mode,
+            output_path: output_path.to_path_buf(),
+            config,
+            writer: None,
+            frame_count: 0,
+        })
     }
 
-    // Create the output directory if it does not exist
-    let output_dir_path = Path::new(output_path);
-    if !output_dir_path.exists() {
-        fs::create_dir_all(output_dir_path).map_err(|e| {
-            opencv::Error::new(
-                opencv::core::StsError,
-                format!("Failed to create output directory: {}", e),
-            )
-        })?;
-    }
-
-    let mut image_paths: Vec<_> = fs::read_dir(image_dir)
-        .map_err(|e| opencv::Error::new(opencv::core::StsError, format!("IO Error: {}", e)))?
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|ext| ext.to_str()) == Some("jpg"))
-        .collect();
-
-    let video_path = output_dir_path.join(format!("{}.avi", file_name));
-    image_paths.sort();
-
-    let mut writer: Option<VideoWriter> = None;
-    let mut frame_count = 0;
-
-    for image_path in image_paths.into_iter() {
-        let mut frame = imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR)?;
+    /// Add **one** frame
+    ///
+    /// - If `writer` is not initialized yet, it will initialize based on the
+    ///   current frame’s dimensions.
+    /// - Scales the frame and draws annotations based on config.
+    /// - Then it either writes the frame (`download` mode) or displays it
+    ///   (`visualization` mode).
+    pub fn add_frame(
+        &mut self,
+        frame: &mut Mat,
+        image_id: Option<&str>,
+        annotations: Option<&[Annotation]>,
+    ) -> opencv::Result<()> {
         if frame.empty() {
-            eprintln!("Warning: Empty frame for image path {:?}", image_path);
-            continue;
+            eprintln!("Warning: Empty frame was provided.");
+            return Ok(());
         }
 
-        // Scale frame
-        scale_frame(&mut frame, config)?;
+        scale_frame(frame, self.config)?;
 
-        // Retrieve image_id from filename
-        let image_file_name = image_path
-            .to_string_lossy()
-            .split('/')
-            .last()
-            .unwrap_or("")
-            .to_string();
-        let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
-
-        // IMPORTANT: Draw annotations (and minimap) first so the frame
-        // has its final size before initializing the writer.
-        draw_annotations(&mut frame, annotations, image_id, config)?;
-
-        // Initialize writer after the frame size is finalized
-        if writer.is_none() {
-            writer = Some(initialize_writer(&video_path, &frame)?);
-            eprintln!("VideoWriter initialized for file: {}", video_path.display());
+        if let (Some(id), Some(ann)) = (image_id, annotations) {
+            draw_annotations(frame, ann, &id, self.config)?;
         }
 
-        if mode == "download" {
-            process_download_mode(&mut writer, &frame)?;
+        if self.writer.is_none() {
+            self.writer = Some(initialize_writer(&self.output_path, frame)?);
+        }
+
+        if self.mode == "download" {
+            if let Some(ref mut writer) = self.writer {
+                writer.write(frame)?;
+            } else {
+                eprintln!("VideoWriter is not initialized—cannot write frame.");
+            }
         } else {
-            process_visualization_mode(&frame)?;
+            highgui::imshow("Image Sequence Visualization", frame)?;
+            // If 'q' (ASCII 113) is pressed
+            if highgui::wait_key(30)? == 113 {
+                // TODO: Handle this in the calling loop
+            }
         }
 
-        frame_count += 1;
+        self.frame_count += 1;
+        Ok(())
     }
 
-    if let Some(ref mut writer) = writer {
-        writer.release()?;
-        eprintln!(
-            "VideoWriter released for file: {} with {} frames",
-            video_path.display(),
-            frame_count
-        );
-    }
+    pub fn finish(&mut self) -> opencv::Result<()> {
+        if let Some(ref mut writer) = self.writer {
+            writer.release()?;
+            eprintln!(
+                "Saved {} frames to '{}'.",
+                self.output_path.display(),
+                self.frame_count
+            );
+        } else {
+            eprintln!("No VideoWriter was created. Nothing to finalize.");
+        }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Result<VideoWriter> {
     let frame_size = frame.size()?;
-    eprintln!(
-        "Initializing VideoWriter with frame size: {:?}x{:?}",
-        frame_size.width, frame_size.height
-    );
 
     if frame_size.width > 0 && frame_size.height > 0 {
         let writer = VideoWriter::new(
@@ -140,28 +139,4 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
             ),
         ))
     }
-}
-
-fn process_download_mode(
-    writer: &mut Option<VideoWriter>,
-    frame: &opencv::core::Mat,
-) -> opencv::Result<()> {
-    if let Some(ref mut writer) = writer {
-        writer.write(frame).map_err(|e| {
-            eprintln!("Failed to write frame: {:?}", e);
-            e
-        })?;
-    } else {
-        eprintln!("VideoWriter is not initialized for current video.");
-    }
-    Ok(())
-}
-
-fn process_visualization_mode(frame: &opencv::core::Mat) -> opencv::Result<()> {
-    highgui::imshow("Image Sequence Visualization", frame)?;
-    if highgui::wait_key(30)? == 113 {
-        // Break loop on 'q' key press
-        return Ok(());
-    }
-    Ok(())
 }

@@ -5,11 +5,12 @@ use opencv::imgproc;
 use opencv::prelude::*;
 
 use super::annotation_calculations::get_team_color;
+use super::image_calculations::scale_frame;
 
 pub fn draw_annotations(
     frame: &mut Mat,
     annotations: &[Annotation],
-    image_id: &String,
+    image_id: &str,
     config: &Config,
 ) -> opencv::Result<()> {
     let annotations: Vec<Annotation> = annotations
@@ -20,7 +21,7 @@ pub fn draw_annotations(
 
     let scale_factor = config.visualization.scale_factor;
     // Scale the frame before extending
-    // scale_frame(frame, scale_factor)?;
+    // scale_frame(frame, &config).expect("Failed to scale frame");
 
     // Draw bounding boxes on the main frame
     for annotation in annotations.iter() {

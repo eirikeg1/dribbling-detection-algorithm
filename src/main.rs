@@ -1,9 +1,11 @@
 use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::domain::data::models::Annotation;
 use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
-use dribbling_detection_algorithm::{
-    config::Config, domain::data::dataset::Dataset, utils::visualizations::visualize_or_store_video,
-};
+use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
+use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
+use opencv::core::Mat;
+use opencv::imgcodecs;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use tokio::runtime::Runtime;
@@ -36,45 +38,120 @@ fn main() {
     println!("{:#?}", config);
 
     let video_mode: &String = &config.general.video_mode;
-    let output_path: &String = &config.data.output_path;
 
     let dataset = Dataset::new(config.clone());
     let train_iter = dataset.iter_subset(&"train");
     let inner_rad = config.dribbling_detection.inner_radius;
     let outer_rad = config.dribbling_detection.outer_radius;
 
-    let dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
+    let mut dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
 
+    // Iterate over videos
     for (i, video_data) in train_iter.enumerate() {
         if i % 1 == 0 {
-            println!("Processing {}", i);
+            println!("Processing  video {i}...");
         }
         let video_data = video_data.unwrap();
         let image_dir = video_data.labels.info.im_dir.clone();
-        println!("Processing video: {}", video_data.dir_path.display());
+        let image_map: HashMap<String, String> = video_data
+            .labels
+            .images
+            .iter()
+            .map(|image| (image.file_name.clone(), image.image_id.clone()))
+            .collect();
 
-        // let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
-        // let players = todo!("Get the player annotations from the config file");
-        // let ball_id: u32 = todo!("Get the ball id from the config file");
-        // let ball_annotations: Vec<Annotation> = annotations
-        //     .iter()
-        //     .filter(|a| a.category_id == ball_id)
-        //     .cloned()
-        //     .collect();
-        
-        // let frame = todo!("Load the frame from the video data");
-        
-        // dribble_detector.process_frame(frame);
+        let category_map: HashMap<String, u32> = video_data
+            .labels
+            .categories
+            .iter()
+            .map(|c| (c.name.clone(), c.id))
+            .collect();
 
-        visualize_or_store_video(
-            std::path::Path::new(&format!("{}/{}", video_data.dir_path.display(), image_dir.unwrap_or("img1".to_string()))),
-            video_data.labels.annotations.as_slice(),
-            video_data.labels.images.as_slice(),
-            video_mode.as_str(),
-            output_path.as_str(),
-            &format!("video_{}", i),
-            &config,
-        )
-        .unwrap();
+        let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
+        let file_name = format!("video_{}", i);
+
+        let mut visualization_builder =
+            VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
+                .expect("Failed to create visualization builder");
+
+        for image_path in video_data.image_paths.into_iter() {
+            let image_file_name = image_path
+                .to_string_lossy()
+                .split('/')
+                .last()
+                .unwrap_or("")
+                .to_string();
+
+            let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
+            let mut frame = Mat::default();
+
+            frame =
+                imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
+
+            let filtered_annotations = annotations
+                .iter()
+                .filter(|a| a.image_id == *image_id)
+                .cloned()
+                .collect::<Vec<Annotation>>();
+
+            visualization_builder
+                .add_frame(&mut frame, Some(image_id), Some(&filtered_annotations))
+                .expect("Failed to add frame");
+        }
+
+        visualization_builder
+            .finish()
+            .expect("Failed to finish visualization");
     }
 }
+
+// fn old_code() {
+//     let ball_id: u32 = match category_map.get("ball") {
+//         Some(id) => *id,
+//         None => continue,
+//     };
+//     let ball: Vec<Ball> = annotations
+//         .iter()
+//         .filter_map(|a| {
+//             if a.category_id == ball_id {
+//                 let (x, y) = calculate_bbox_pitch_center(a.clone())?;
+//                 Some(Ball {
+//                     x: x,
+//                     y: y,
+//                 })
+//             } else {
+//                 None
+//             }
+//         })
+//         .collect();
+
+//     let player_id: u32 = match category_map.get("player") {
+//         Some(id) => *id,
+//         None => continue,
+//     };
+//     let players: Vec<Player> = annotations
+//         .iter()
+//         .filter_map(|a| {
+//             if a.category_id != player_id {
+//                 let (x, y) = calculate_bbox_pitch_center(a.clone())?;
+//                 Some(Player {
+//                     id: a.track_id?,
+//                     x: x,
+//                     y: y,
+//                     velocity: (0.0, 0.0),
+//                 })
+//             } else {
+//                 None
+//             }
+//         })
+//         .collect();
+
+//     let frame = Frame {
+//         frame_number: i as u32,
+//         players: players,
+//         ball: ball[0].clone(),
+//     };
+
+//     println!("Processing frame: {:?}", frame);
+//     dribble_detector.process_frame(frame);
+// }

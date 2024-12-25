@@ -3,6 +3,7 @@ use opencv::core::{Mat, Size, StsError};
 use opencv::imgproc;
 use opencv::prelude::MatTraitConst;
 
+/// Scales the frame by the given factor, is used for changing the size of the visualization.
 pub fn scale_frame(frame: &mut Mat, config: &Config) -> opencv::Result<()> {
     let scale = config.visualization.scale_factor;
     let new_size = Size {
