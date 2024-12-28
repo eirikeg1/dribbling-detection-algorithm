@@ -1,15 +1,17 @@
 use crate::config::Config;
 use crate::domain::data::models::{Annotation, BboxImage};
-use opencv::core::{self, Mat, Rect, Scalar, Size};
+use crate::domain::events::drible_models::DribbleEvent;
+use opencv::core::{self, Mat, Rect, Scalar};
 use opencv::imgproc;
 use opencv::prelude::*;
 
 use super::annotation_calculations::get_team_color;
-use super::image_calculations::scale_frame;
+
 
 pub fn draw_annotations(
     frame: &mut Mat,
     annotations: &[Annotation],
+    dribble_event: Option<DribbleEvent>,
     image_id: &str,
     config: &Config,
 ) -> opencv::Result<()> {
@@ -57,12 +59,14 @@ pub fn draw_annotations(
     // Draw pitch points onto the minimap
     for annotation in annotations.iter() {
         if let Some(bbox_pitch) = &annotation.bbox_pitch {
+            let color = get_team_color(annotation);
+
             draw_pitch_point_on_minimap(
                 &mut minimap,
                 bbox_pitch.x_bottom_middle,
                 bbox_pitch.y_bottom_middle,
                 config,
-                get_team_color(annotation),
+                color,
             )?;
         }
     }

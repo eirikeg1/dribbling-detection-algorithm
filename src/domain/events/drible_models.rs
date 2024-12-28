@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::f64;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Player {
     pub id: u32,
     pub x: f64,
@@ -9,14 +9,14 @@ pub struct Player {
     pub velocity: (f64, f64),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ball {
     pub x: f64,
     pub y: f64,
 }
 
 #[derive(Debug, Clone)]
-pub struct Frame {
+pub struct DribleFrame {
     pub frame_number: u32,
     pub players: Vec<Player>,
     pub ball: Ball,

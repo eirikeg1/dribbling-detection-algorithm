@@ -1,6 +1,8 @@
 use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::domain::data::models::Annotation;
+use dribbling_detection_algorithm::domain::events::create_drible_models::{get_ball_model, get_player_models};
 use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
+use dribbling_detection_algorithm::domain::events::drible_models::DribleFrame;
 use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
 use opencv::core::Mat;
@@ -66,7 +68,7 @@ fn main() {
             .iter()
             .map(|c| (c.name.clone(), c.id))
             .collect();
-
+        
         let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
         let file_name = format!("video_{}", i);
 
@@ -82,6 +84,7 @@ fn main() {
                 .unwrap_or("")
                 .to_string();
 
+
             let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
             let mut frame = Mat::default();
 
@@ -94,8 +97,28 @@ fn main() {
                 .cloned()
                 .collect::<Vec<Annotation>>();
 
+            let ball_model = get_ball_model(&category_map, &filtered_annotations);
+            let player_models = get_player_models(&category_map, &filtered_annotations);
+
+           if ball_model.is_none() || player_models.is_none() {
+                continue;
+            }
+
+            let drible_frame = DribleFrame {
+                frame_number: i as u32,
+                players: player_models.unwrap(),
+                ball: ball_model.unwrap(),
+            };
+            let drible_event = dribble_detector.process_frame(drible_frame);
+
+                
             visualization_builder
-                .add_frame(&mut frame, Some(image_id), Some(&filtered_annotations))
+                .add_frame(
+                    &mut frame,
+                    Some(image_id),
+                    Some(&filtered_annotations),
+                    drible_event,
+                )
                 .expect("Failed to add frame");
         }
 
@@ -104,54 +127,3 @@ fn main() {
             .expect("Failed to finish visualization");
     }
 }
-
-// fn old_code() {
-//     let ball_id: u32 = match category_map.get("ball") {
-//         Some(id) => *id,
-//         None => continue,
-//     };
-//     let ball: Vec<Ball> = annotations
-//         .iter()
-//         .filter_map(|a| {
-//             if a.category_id == ball_id {
-//                 let (x, y) = calculate_bbox_pitch_center(a.clone())?;
-//                 Some(Ball {
-//                     x: x,
-//                     y: y,
-//                 })
-//             } else {
-//                 None
-//             }
-//         })
-//         .collect();
-
-//     let player_id: u32 = match category_map.get("player") {
-//         Some(id) => *id,
-//         None => continue,
-//     };
-//     let players: Vec<Player> = annotations
-//         .iter()
-//         .filter_map(|a| {
-//             if a.category_id != player_id {
-//                 let (x, y) = calculate_bbox_pitch_center(a.clone())?;
-//                 Some(Player {
-//                     id: a.track_id?,
-//                     x: x,
-//                     y: y,
-//                     velocity: (0.0, 0.0),
-//                 })
-//             } else {
-//                 None
-//             }
-//         })
-//         .collect();
-
-//     let frame = Frame {
-//         frame_number: i as u32,
-//         players: players,
-//         ball: ball[0].clone(),
-//     };
-
-//     println!("Processing frame: {:?}", frame);
-//     dribble_detector.process_frame(frame);
-// }

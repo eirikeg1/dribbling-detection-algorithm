@@ -3,6 +3,13 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Deserialize)]
+pub enum SpecialHighlight {
+    PossesionHolder,
+    Defender,
+    Ball,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Info {
     pub version: String,
     pub game_id: String,

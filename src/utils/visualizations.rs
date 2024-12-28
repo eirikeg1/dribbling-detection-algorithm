@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::{config::Config, domain::events::drible_models::DribbleEvent};
 use crate::domain::data::models::Annotation;
 use opencv::{
     core::{Mat, Size},
@@ -61,6 +61,7 @@ impl<'a> VisualizationBuilder<'a> {
         frame: &mut Mat,
         image_id: Option<&str>,
         annotations: Option<&[Annotation]>,
+        drible_event: Option<DribbleEvent>,
     ) -> opencv::Result<()> {
         if frame.empty() {
             eprintln!("Warning: Empty frame was provided.");
@@ -70,7 +71,13 @@ impl<'a> VisualizationBuilder<'a> {
         scale_frame(frame, self.config)?;
 
         if let (Some(id), Some(ann)) = (image_id, annotations) {
-            draw_annotations(frame, ann, &id, self.config)?;
+            draw_annotations(
+                frame,
+                ann,
+                drible_event,
+                &id,
+                self.config,
+            )?;
         }
 
         if self.writer.is_none() {
