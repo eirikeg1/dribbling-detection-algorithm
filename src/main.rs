@@ -6,7 +6,7 @@ use dribbling_detection_algorithm::domain::events::drible_models::DribleFrame;
 use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
 use opencv::core::Mat;
-use opencv::imgcodecs;
+use opencv::{highgui, imgcodecs};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -49,7 +49,7 @@ fn main() {
     let mut dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
 
     // Iterate over videos
-    for (i, video_data) in train_iter.enumerate() {
+    for (i, video_data) in train_iter.enumerate().skip(1) {
         if i % 1 == 0 {
             println!("Processing  video {i}...");
         }
@@ -86,10 +86,8 @@ fn main() {
 
 
             let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
-            let mut frame = Mat::default();
 
-            frame =
-                imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
+            let mut frame = imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
             let filtered_annotations = annotations
                 .iter()
@@ -100,7 +98,8 @@ fn main() {
             let ball_model = get_ball_model(&category_map, &filtered_annotations);
             let player_models = get_player_models(&category_map, &filtered_annotations);
 
-           if ball_model.is_none() || player_models.is_none() {
+            if ball_model.is_none() || player_models.is_none() {
+                println!("(In main): No ball or player found in frame. Skipping...");
                 continue;
             }
 
@@ -120,6 +119,14 @@ fn main() {
                     drible_event,
                 )
                 .expect("Failed to add frame");
+
+            let key = highgui::wait_key(0);
+
+            if let Ok(113) = highgui::wait_key(30) {
+                return; // If 'q' (ASCII 113) is pressed, exit the program
+            } else {
+                continue; // Else continue
+            }
         }
 
         visualization_builder

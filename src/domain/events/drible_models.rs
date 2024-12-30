@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::f64;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Player {
     pub id: u32,
     pub x: f64,
@@ -24,18 +24,32 @@ pub struct DribleFrame {
 
 #[derive(Clone, Debug)]
 pub struct DribbleEvent {
+    pub finished: bool,
     pub possession_holder: u32,
     pub start_frame: u32,
     pub end_frame: Option<u32>,
     pub frames: Vec<u32>,
     pub active_defenders: HashSet<u32>,
 }
+impl Default for DribbleEvent {
+    fn default() -> Self {
+        DribbleEvent {
+            finished: false,
+            possession_holder: u32::MAX,
+            start_frame: 0,
+            end_frame: None,
+            frames: Vec::new(),
+            active_defenders: HashSet::new(),
+        }
+    }
+}
 
 impl DribbleEvent {
     pub fn new(possession_holder: u32, start_frame: u32) -> Self {
         DribbleEvent {
-            possession_holder,
-            start_frame,
+            finished: false,
+            possession_holder: possession_holder,
+            start_frame: start_frame,
             end_frame: None,
             frames: vec![start_frame],
             active_defenders: HashSet::new(),

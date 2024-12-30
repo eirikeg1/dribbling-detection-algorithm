@@ -45,10 +45,10 @@ pub fn get_player_models(
     let players: Vec<Player> = annotations
         .iter()
         .filter_map(|a| {
-            if a.category_id != player_id {
+            if a.category_id == player_id {
                 let (x, y) = calculate_bbox_pitch_center(a.clone())?;
                 Some(Player {
-                    id: a.track_id?,
+                    id: a.track_id.unwrap_or(u32::MAX).clone(),
                     x: x,
                     y: y,
                     velocity: (0.0, 0.0),
