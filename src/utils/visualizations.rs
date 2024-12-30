@@ -92,10 +92,6 @@ impl<'a> VisualizationBuilder<'a> {
             }
         } else {
             highgui::imshow("Image Sequence Visualization", frame)?;
-            // If 'q' (ASCII 113) is pressed
-            if highgui::wait_key(30)? == 113 {
-                // TODO: Handle this in the calling loop
-            }
         }
 
         self.frame_count += 1;
@@ -107,8 +103,8 @@ impl<'a> VisualizationBuilder<'a> {
             writer.release()?;
             eprintln!(
                 "Saved {} frames to '{}'.",
+                self.frame_count,
                 self.output_path.display(),
-                self.frame_count
             );
         } else {
             eprintln!("No VideoWriter was created. Nothing to finalize.");
