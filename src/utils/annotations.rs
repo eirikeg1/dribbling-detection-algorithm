@@ -7,7 +7,6 @@ use opencv::prelude::*;
 
 use super::annotation_calculations::get_team_color;
 
-
 pub fn draw_annotations(
     frame: &mut Mat,
     annotations: &[Annotation],
@@ -67,11 +66,8 @@ pub fn draw_annotations(
     // Draw pitch points (and possibly the circle) onto the minimap
     for annotation in &annotations {
         if let Some(bbox_pitch) = &annotation.bbox_pitch {
-
             let is_possession_holder = match &dribble_event {
-                Some(de) => {
-                    de.possession_holder == annotation.track_id.unwrap()
-                },
+                Some(de) => de.possession_holder == annotation.track_id.unwrap(),
                 None => false,
             };
 
@@ -95,11 +91,9 @@ pub fn draw_annotations(
             // 2) If the annotation is the possession holder, draw the outer range circle
             if is_possession_holder {
                 // Convert the player's pitch coords to minimap coords
-                let mx = ((bbox_pitch.x_bottom_middle - x_min)
-                    / (x_max - x_min)
+                let mx = ((bbox_pitch.x_bottom_middle - x_min) / (x_max - x_min)
                     * minimap_width as f64) as i32;
-                let my = ((bbox_pitch.y_bottom_middle - y_min)
-                    / (y_max - y_min)
+                let my = ((bbox_pitch.y_bottom_middle - y_min) / (y_max - y_min)
                     * minimap_height as f64) as i32;
 
                 // Convert the `outer_rad` (pitch space) into minimap space
@@ -117,7 +111,7 @@ pub fn draw_annotations(
                     core::Point::new(mx, my),
                     outer_circle_radius,
                     Scalar::new(0.0, 255.0, 255.0, 255.0), // bright yellow outline
-                    2,  // thickness
+                    2,                                     // thickness
                     imgproc::LINE_8,
                     0,
                 )?;
@@ -137,7 +131,12 @@ pub fn draw_annotations(
 
     // Place the minimap below the main frame
     let minimap_x_offset = (frame.cols() - minimap_width) / 2; // center horizontally
-    let roi_minimap = Rect::new(minimap_x_offset, frame.rows(), minimap_width, minimap_height);
+    let roi_minimap = Rect::new(
+        minimap_x_offset,
+        frame.rows(),
+        minimap_width,
+        minimap_height,
+    );
     let mut extended_roi_minimap = Mat::roi_mut(&mut extended_frame, roi_minimap)?;
     minimap.copy_to(&mut extended_roi_minimap)?;
 
@@ -146,7 +145,6 @@ pub fn draw_annotations(
 
     Ok(())
 }
-
 
 fn draw_bbox_image(
     frame: &mut Mat,

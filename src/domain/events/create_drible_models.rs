@@ -1,26 +1,28 @@
 use std::collections::HashMap;
 
-use crate::{domain::{data::models::Annotation, events::drible_models::{Ball, Player}}, utils::annotation_calculations::calculate_bbox_pitch_center};
-
+use crate::{
+    domain::{
+        data::models::Annotation,
+        events::drible_models::{Ball, Player},
+    },
+    utils::annotation_calculations::calculate_bbox_pitch_center,
+};
 
 pub fn get_ball_model(
     category_map: &HashMap<String, u32>,
     annotations: &[Annotation],
 ) -> Option<Ball> {
     let ball_id: u32 = match category_map.get("ball") {
-                Some(id) => *id,
-                None => return None,
-            };
+        Some(id) => *id,
+        None => return None,
+    };
 
     let balls: Vec<Ball> = annotations
         .iter()
         .filter_map(|a| {
             if a.category_id == ball_id {
                 let (x, y) = calculate_bbox_pitch_center(a.clone())?;
-                Some(Ball {
-                    x: x,
-                    y: y,
-                })
+                Some(Ball { x: x, y: y })
             } else {
                 None
             }

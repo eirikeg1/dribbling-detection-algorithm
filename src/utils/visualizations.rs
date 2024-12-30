@@ -1,5 +1,5 @@
-use crate::{config::Config, domain::events::drible_models::DribbleEvent};
 use crate::domain::data::models::Annotation;
+use crate::{config::Config, domain::events::drible_models::DribbleEvent};
 use opencv::{
     core::{Mat, Size},
     highgui, imgcodecs,
@@ -71,13 +71,7 @@ impl<'a> VisualizationBuilder<'a> {
         scale_frame(frame, self.config)?;
 
         if let (Some(id), Some(ann)) = (image_id, annotations) {
-            draw_annotations(
-                frame,
-                ann,
-                drible_event,
-                &id,
-                self.config,
-            )?;
+            draw_annotations(frame, ann, drible_event, &id, self.config)?;
         }
 
         if self.writer.is_none() {

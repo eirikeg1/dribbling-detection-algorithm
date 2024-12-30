@@ -1,6 +1,8 @@
 use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::domain::data::models::Annotation;
-use dribbling_detection_algorithm::domain::events::create_drible_models::{get_ball_model, get_player_models};
+use dribbling_detection_algorithm::domain::events::create_drible_models::{
+    get_ball_model, get_player_models,
+};
 use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
 use dribbling_detection_algorithm::domain::events::drible_models::DribleFrame;
 use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
@@ -68,7 +70,7 @@ fn main() {
             .iter()
             .map(|c| (c.name.clone(), c.id))
             .collect();
-        
+
         let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
         let file_name = format!("video_{}", i);
 
@@ -84,10 +86,10 @@ fn main() {
                 .unwrap_or("")
                 .to_string();
 
-
             let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
 
-            let mut frame = imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
+            let mut frame =
+                imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
             let filtered_annotations = annotations
                 .iter()
@@ -110,7 +112,6 @@ fn main() {
             };
             let drible_event = dribble_detector.process_frame(drible_frame);
 
-                
             visualization_builder
                 .add_frame(
                     &mut frame,

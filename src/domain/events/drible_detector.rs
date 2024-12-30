@@ -52,12 +52,11 @@ impl DribbleDetector {
             .collect()
     }
 
-    /// Called once per frame. 
+    /// Called once per frame.
     /// - If there's an active event, update/end it.
     /// - If an event ends, optionally check if a new one starts.
     /// - If no event is active, see if a new event starts.
     pub fn process_frame(&mut self, frame: DribleFrame) -> Option<DribbleEvent> {
-
         // println!("Current event state: {:?}", self.active_event);
         let mut event = self.active_event.clone();
         if event.is_some() {
@@ -65,7 +64,7 @@ impl DribbleDetector {
             // There is a currently active event
             let completed_event = self.handle_active_event(&frame, &mut event).unwrap();
             if completed_event.finished {
-                // The old event ended. 
+                // The old event ended.
                 println!("Ended event: {:?}", completed_event);
 
                 // Optionally check if a new event starts THIS FRAME:
@@ -137,7 +136,7 @@ impl DribbleDetector {
         if let Some(holder) = frame.players.iter().find(|p| p.id == holder_id) {
             // Check distance to the ball
             let dist = Self::distance((holder.x, holder.y), (frame.ball.x, frame.ball.y));
-            
+
             if dist < self.inner_rad {
                 // The ball is still in holder's range => update ongoing event
                 event.add_frame(frame.frame_number);
