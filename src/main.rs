@@ -7,7 +7,6 @@ use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetec
 use dribbling_detection_algorithm::domain::events::drible_models::DribleFrame;
 use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
-use opencv::core::Mat;
 use opencv::{highgui, imgcodecs};
 use std::collections::HashMap;
 use std::env;
@@ -56,7 +55,7 @@ fn main() {
             println!("Processing  video {i}...");
         }
         let video_data = video_data.unwrap();
-        let image_dir = video_data.labels.info.im_dir.clone();
+        // let image_dir = video_data.labels.info.im_dir.clone();
         let image_map: HashMap<String, String> = video_data
             .labels
             .images
@@ -121,7 +120,7 @@ fn main() {
                 )
                 .expect("Failed to add frame");
 
-            let key = highgui::wait_key(0);
+            let _ = highgui::wait_key(0);
 
             if let Ok(113) = highgui::wait_key(30) {
                 return; // If 'q' (ASCII 113) is pressed, exit the program

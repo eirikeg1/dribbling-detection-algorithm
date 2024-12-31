@@ -1,11 +1,6 @@
 use crate::domain::data::models::Annotation;
 use crate::{config::Config, domain::events::drible_models::DribbleEvent};
-use opencv::{
-    core::{Mat, Size},
-    highgui, imgcodecs,
-    prelude::*,
-    videoio::VideoWriter,
-};
+use opencv::{core::Mat, highgui, prelude::*, videoio::VideoWriter};
 use std::{
     fs,
     path::{Path, PathBuf},
