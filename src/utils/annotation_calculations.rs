@@ -1,15 +1,21 @@
+use std::collections::HashMap;
+
 use opencv::core::Scalar;
 
 use crate::domain::data::models::Annotation;
 
-pub fn get_team_color(annotation: &Annotation) -> Scalar {
+pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String, u32>) -> Scalar {
     let team_id = &annotation.attributes.as_ref().unwrap().team;
+
+    if annotation.category_id == categories["ball"] {
+        return Scalar::new(255.0, 40.0, 185.0, 255.0); // Purple for ball
+    }
 
     // Determine color based on team_id
     match team_id.as_deref() {
-        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0), // Blue for team A
-        Some("right") => Scalar::new(0.0, 255.0, 0.0, 255.0), // Green for team B
-        _ => Scalar::new(255.0, 0.0, 0.0, 255.0),            // Default: Red
+        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0),  // Red for team A
+        Some("right") => Scalar::new(255.0, 0.0, 0.0, 255.0), // Blue for team B
+        _ => Scalar::new(0.0, 255.0, 0.0, 255.0),             // Default: Green
     }
 }
 

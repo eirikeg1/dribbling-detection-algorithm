@@ -116,6 +116,7 @@ fn main() {
                     &mut frame,
                     Some(image_id),
                     Some(&filtered_annotations),
+                    &category_map,
                     drible_event,
                 )
                 .expect("Failed to add frame");

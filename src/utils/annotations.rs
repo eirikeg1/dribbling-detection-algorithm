@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::config::Config;
 use crate::domain::data::models::{Annotation, BboxImage};
 use crate::domain::events::drible_models::DribbleEvent;
@@ -5,11 +7,12 @@ use opencv::core::{self, Mat, Rect, Scalar};
 use opencv::imgproc;
 use opencv::prelude::*;
 
-use super::annotation_calculations::get_team_color;
+use super::annotation_calculations::get_annotation_color;
 
 pub fn draw_annotations(
     frame: &mut Mat,
     annotations: &[Annotation],
+    categories: &HashMap<String, u32>,
     dribble_event: Option<DribbleEvent>,
     image_id: &str,
     config: &Config,
@@ -25,7 +28,7 @@ pub fn draw_annotations(
     // Draw bounding boxes in the main frame
     for annotation in &annotations {
         if let Some(bbox_image) = &annotation.bbox_image {
-            draw_bbox_image(frame, bbox_image, scale_factor, get_team_color(annotation))?;
+            draw_bbox_image(frame, bbox_image, scale_factor, get_annotation_color(annotation, categories))?;
         }
     }
 
@@ -76,7 +79,7 @@ pub fn draw_annotations(
             let color = if is_possession_holder {
                 Scalar::new(255.0, 255.0, 40.0, 255.0) // Bright yellow
             } else {
-                get_team_color(annotation)
+                get_annotation_color(annotation, categories)
             };
 
             // 1) Draw the dot for the player
