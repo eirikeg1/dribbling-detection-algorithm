@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-use opencv::core::Scalar;
-
 use crate::domain::data::models::Annotation;
+use opencv::core::Scalar;
+use std::collections::HashMap;
 
 pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String, u32>) -> Scalar {
     let team_id = &annotation.attributes.as_ref().unwrap().team;

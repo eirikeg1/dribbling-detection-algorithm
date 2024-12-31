@@ -31,6 +31,7 @@ pub struct DribbleEvent {
     pub frames: Vec<u32>,
     pub active_defenders: HashSet<u32>,
 }
+
 impl Default for DribbleEvent {
     fn default() -> Self {
         DribbleEvent {

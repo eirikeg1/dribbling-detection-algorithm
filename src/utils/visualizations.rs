@@ -1,5 +1,5 @@
-use crate::domain::data::models::Annotation;
 use crate::{config::Config, domain::events::drible_models::DribbleEvent};
+use crate::domain::data::models::Annotation;
 use opencv::{core::Mat, highgui, prelude::*, videoio::VideoWriter};
 use std::collections::HashMap;
 use std::{

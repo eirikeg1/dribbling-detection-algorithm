@@ -11,11 +11,11 @@ inner_radius = 2 # Percent of screen from ball
 outer_radius = 4
 
 [visualization]
-scale_factor = 0.4 # Scale factor for video and player bounding boxes. Usually best to keep at 1 if downloading
+scale_factor = 0.6 # Scale factor for video and player bounding boxes. Usually best to keep at 1 if downloading
 minimap_x = 20
 minimap_y = 200
-minimap_width = 600
-minimap_height = 300 # 186
+minimap_width = 900 # 600
+minimap_height = 450 # 186
 x_min = -60.0
 x_max = 60.0
 y_min = -34.0
@@ -27,4 +27,3 @@ data_path = "/home/eirik/Projects/data/SoccerNetGS"
 subsets = ["train"]
 output_path = "data/output"
 huggingface_dataset_url = "https://datasets-server.huggingface.co/first-rows?dataset=SoccerNet%2FSN-GSR-2025&config=default"
- 
