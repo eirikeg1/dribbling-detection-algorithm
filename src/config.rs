@@ -26,6 +26,7 @@ pub struct DribblingDetectionConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct VisualizationConfig {
+    pub autoplay: bool,
     pub scale_factor: f64,
     pub minimap_x: i32,
     pub minimap_y: i32,

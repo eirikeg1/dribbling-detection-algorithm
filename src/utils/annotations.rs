@@ -1,3 +1,4 @@
+use super::annotation_calculations::get_annotation_color;
 use crate::config::Config;
 use crate::domain::data::models::{Annotation, BboxImage};
 use crate::domain::events::drible_models::DribbleEvent;
@@ -5,7 +6,6 @@ use opencv::core::{self, Mat, Rect, Scalar};
 use opencv::imgproc;
 use opencv::prelude::*;
 use std::collections::HashMap;
-use super::annotation_calculations::get_annotation_color;
 
 pub fn draw_annotations(
     frame: &mut Mat,
@@ -26,7 +26,12 @@ pub fn draw_annotations(
     // Draw bounding boxes in the main frame
     for annotation in &annotations {
         if let Some(bbox_image) = &annotation.bbox_image {
-            draw_bbox_image(frame, bbox_image, scale_factor, get_annotation_color(annotation, categories))?;
+            draw_bbox_image(
+                frame,
+                bbox_image,
+                scale_factor,
+                get_annotation_color(annotation, categories),
+            )?;
         }
     }
 

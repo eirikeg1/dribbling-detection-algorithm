@@ -1,5 +1,5 @@
-use crate::{config::Config, domain::events::drible_models::DribbleEvent};
 use crate::domain::data::models::Annotation;
+use crate::{config::Config, domain::events::drible_models::DribbleEvent};
 use opencv::{core::Mat, highgui, prelude::*, videoio::VideoWriter};
 use std::collections::HashMap;
 use std::{
@@ -133,4 +133,18 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
             ),
         ))
     }
+}
+
+/// Wait for user input to continue or quit. Returns false if user inputs "q".
+/// If `autoplay` is enabled in the config, it will return true immediately.
+pub fn handle_keyboard_input(config: &Config) -> Result<bool, opencv::Error> {
+    if config.visualization.autoplay {
+        return Ok(true);
+    }
+
+    if highgui::wait_key(0)? == 113 {
+        return Ok(false);
+    }
+
+    Ok(true)
 }

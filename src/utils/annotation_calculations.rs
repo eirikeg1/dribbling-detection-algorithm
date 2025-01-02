@@ -11,9 +11,9 @@ pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String
 
     // Determine color based on team_id
     match team_id.as_deref() {
-        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0),  // Red for team A
+        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0), // Red for team A
         Some("right") => Scalar::new(255.0, 0.0, 0.0, 255.0), // Blue for team B
-        _ => Scalar::new(0.0, 255.0, 0.0, 255.0),             // Default: Green
+        _ => Scalar::new(0.0, 255.0, 0.0, 255.0),            // Default: Green
     }
 }
 

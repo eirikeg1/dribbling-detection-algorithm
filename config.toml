@@ -7,10 +7,11 @@ video_mode = "display" # Possible values: "download", "display" (If using SSH di
 threshold = 0.7  # Threshold for dribbling detection confidence
 frame_skip = 5
 min_duration = 1.5  # Minimum duration for an action to be classified as dribbling
-inner_radius = 2 # Percent of screen from ball
-outer_radius = 4
+inner_radius = 1.8 # Percent of screen from ball
+outer_radius = 3.5
 
 [visualization]
+autoplay = false
 scale_factor = 0.6 # Scale factor for video and player bounding boxes. Usually best to keep at 1 if downloading
 minimap_x = 20
 minimap_y = 200
