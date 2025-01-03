@@ -1,6 +1,6 @@
 # Dribbling Detection Algorithm
 
-A Rust-based implementation for detecting dribbling events on the [SoccerNet Game State Reconstruction 2024](https://www.soccer-net.org/) dataset.
+A Rust-based implementation for detecting dribbling events on the [SoccerNet Game State Reconstruction 2024](https://www.soccer-net.org/) dataset. The goal behind this tool is not to get the most accurate predictions,but to get a set of good candidates which can be manually approved to not approved later. Therefore this is not indended to be used for classification, but to build a dataset quickly.
 
 ## Dataset
 
