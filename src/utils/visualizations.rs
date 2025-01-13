@@ -72,17 +72,17 @@ impl<'a> VisualizationBuilder<'a> {
         }
 
         if self.writer.is_none() {
-            self.writer = Some(initialize_writer(&self.output_path, frame)?);
+            self.writer = Some(initialize_writer(&self.output_path, frame).expect("failed to initialize writer"));
         }
 
         if self.mode == "download" {
             if let Some(ref mut writer) = self.writer {
-                writer.write(frame)?;
+                writer.write(frame).expect("failed to write to video");
             } else {
                 eprintln!("VideoWriter is not initialized—cannot write frame.");
             }
         } else {
-            highgui::imshow("Image Sequence Visualization", frame)?;
+            highgui::imshow("Image Sequence Visualization", frame).expect("failed to show frame");
         }
 
         self.frame_count += 1;
@@ -91,12 +91,12 @@ impl<'a> VisualizationBuilder<'a> {
 
     pub fn finish(&mut self) -> opencv::Result<()> {
         if let Some(ref mut writer) = self.writer {
-            writer.release()?;
-            eprintln!(
-                "Saved {} frames to '{}'.",
-                self.frame_count,
-                self.output_path.display(),
-            );
+            writer.release().expect("failed to release writer");
+            // eprintln!(
+            //     "Saved {} frames to '{}'.",
+            //     self.frame_count,
+            //     self.output_path.display(),
+            // );
         } else {
             eprintln!("No VideoWriter was created. Nothing to finalize.");
         }
@@ -109,6 +109,7 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
     let frame_size = frame.size()?;
 
     if frame_size.width > 0 && frame_size.height > 0 {
+        println!("Initializing writer for path: {}", video_path.display());
         let writer = VideoWriter::new(
             video_path.to_str().unwrap(),
             // Use a codec that is more widely supported, e.g., 'MJPG'
@@ -117,7 +118,7 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
             frame_size,
             true,
         )?;
-        if !writer.is_opened()? {
+        if !writer.is_opened().expect("failed to check if writer is opened") {
             eprintln!(
                 "VideoWriter failed to open for path: {}",
                 video_path.display()
@@ -139,6 +140,11 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
 /// If `autoplay` is enabled in the config, it will return true immediately.
 pub fn handle_keyboard_input(config: &Config) -> Result<bool, opencv::Error> {
     if config.visualization.autoplay {
+
+        if highgui::wait_key(1)? == 113 {
+            return Ok(false);
+        }
+
         return Ok(true);
     }
 
