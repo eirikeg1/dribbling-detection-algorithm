@@ -9,7 +9,7 @@ use dribbling_detection_algorithm::utils::visualizations::{
     handle_keyboard_input, VisualizationBuilder,
 };
 use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
-use opencv::{highgui, imgcodecs};
+use opencv::imgcodecs;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -52,7 +52,7 @@ fn main() {
     let mut dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
 
     // Iterate over videos
-    for (vid_num, video_data) in train_iter.enumerate().skip(1) {
+    for (vid_num, video_data) in train_iter.enumerate().skip(2) {
         if vid_num % 1 == 0 {
             println!("Processing  video {vid_num}...");
         }
@@ -101,8 +101,13 @@ fn main() {
             let ball_model = get_ball_model(&category_map, &filtered_annotations);
             let player_models = get_player_models(&category_map, &filtered_annotations);
 
-            if ball_model.is_none() || player_models.is_none() {
-                println!("(In main): No ball or player found in frame. Skipping...");
+            if player_models.is_none() {
+                // println!("(In main): No players found in frame. Skipping frame...");
+                continue;
+            }
+
+            if ball_model.is_none() {
+                // println!("(In main): No ball  found in frame. Skipping frame...");
                 continue;
             }
 
@@ -113,6 +118,10 @@ fn main() {
             };
             let drible_event = dribble_detector.process_frame(drible_frame);
 
+            if drible_event.is_some() && drible_event.as_ref().unwrap().detected_dribble {
+                println!("Drible event detected: {:?}", drible_event);
+            }
+
             visualization_builder
                 .add_frame(
                     &mut frame,
@@ -122,14 +131,14 @@ fn main() {
                     drible_event,
                 )
                 .expect("Failed to add frame");
-
+            
             let input_value =
                 handle_keyboard_input(&config).expect("There was an error with keyboard input");
 
             if !input_value {
                 visualization_builder
-                    .finish()
-                    .expect("Failed to finish visualization");
+                .finish()
+                .expect("Failed to finish visualization");
                 return;
             }
         }
