@@ -7,6 +7,7 @@ pub struct Player {
     pub x: f64,
     pub y: f64,
     pub velocity: (f64, f64),
+    pub within_inner_rad: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -25,6 +26,8 @@ pub struct DribleFrame {
 #[derive(Clone, Debug)]
 pub struct DribbleEvent {
     pub finished: bool,
+    pub detected_dribble: bool,
+    pub ever_contested: bool,
     pub possession_holder: u32,
     pub start_frame: u32,
     pub end_frame: Option<u32>,
@@ -36,6 +39,8 @@ impl Default for DribbleEvent {
     fn default() -> Self {
         DribbleEvent {
             finished: false,
+            detected_dribble: false,
+            ever_contested: false,
             possession_holder: u32::MAX,
             start_frame: 0,
             end_frame: None,
@@ -49,6 +54,8 @@ impl DribbleEvent {
     pub fn new(possession_holder: u32, start_frame: u32) -> Self {
         DribbleEvent {
             finished: false,
+            detected_dribble: false,
+            ever_contested: false,
             possession_holder: possession_holder,
             start_frame: start_frame,
             end_frame: None,

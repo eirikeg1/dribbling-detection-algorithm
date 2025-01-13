@@ -49,6 +49,15 @@ impl DribbleDetector {
                         (possession_holder.x, possession_holder.y),
                     ) < self.outer_rad
             })
+            .map(|player| { // Set the within_inner_rad flag
+                let dist = Self::distance((player.x, player.y), (possession_holder.x, possession_holder.y));
+                if dist < self.inner_rad {
+                    // println!("Player {} is within inner_rad of the ball!", player.id);
+                    let mut player = player.clone();
+                    player.within_inner_rad = true;
+                }
+                player
+            })
             .collect()
     }
 
@@ -65,7 +74,7 @@ impl DribbleDetector {
             let completed_event = self.handle_active_event(&frame, &mut event).unwrap();
             if completed_event.finished {
                 // The old event ended.
-                println!("Ended event: {:?}", completed_event);
+                // println!("Ended event: {:?}", completed_event);
 
                 // Optionally check if a new event starts THIS FRAME:
                 if let Some(new_event) = self.handle_search_state(&frame) {
@@ -76,14 +85,14 @@ impl DribbleDetector {
                 // If no new event started, just return the one that ended
                 return Some(completed_event);
             } else {
-                println!("Continuing event: {:?}", event);
+                // println!("Continuing event: {:?}", event);
                 // The event is still active
                 self.active_event = Some(event);
                 return self.active_event.clone();
             }
         } else {
             // No active event -> try to start a new one
-            println!("No active event. Searching for new event...");
+            // println!("No active event. Searching for new event...");
             self.active_event = None;
             if let Some(new_event) = self.handle_search_state(&frame) {
                 return Some(new_event);
@@ -97,7 +106,7 @@ impl DribbleDetector {
     /// (We only start if at least one player is within inner_rad of the ball.)
     fn handle_search_state(&mut self, frame: &DribleFrame) -> Option<DribbleEvent> {
         // Find who is closest to the ball
-        println!("\n\nSearching for new event...");
+        // println!("\n\nSearching for new event...");
         if let Some(closest_player) = self.closest_player_to_ball(&frame.players, &frame.ball) {
             let dist = Self::distance(
                 (closest_player.x, closest_player.y),
@@ -113,7 +122,7 @@ impl DribbleDetector {
                     event.add_defender(d.id.clone());
                 }
                 self.active_event = Some(event.clone());
-                println!("Started new event: {:?}", event);
+                // println!("Started new event: {:?}", event);
                 return Some(event);
             }
         }
@@ -137,28 +146,33 @@ impl DribbleDetector {
             // Check distance to the ball
             let dist = Self::distance((holder.x, holder.y), (frame.ball.x, frame.ball.y));
 
-            if dist < self.inner_rad {
-                // The ball is still in holder's range => update ongoing event
-                event.add_frame(frame.frame_number);
-
-                let defenders = self.detect_defenders(&frame.players, holder);
-                for def in defenders {
-                    event.add_defender(def.id.clone());
-                }
-
-                // If no defenders remain, we consider that a natural end
-                if event.active_defenders.is_empty() {
-                    event.end_frame = Some(frame.frame_number);
-                    event.finished = true;
-                    return self.active_event.take();
-                }
-                return self.active_event.clone();
-            } else {
-                // The ball left the holder's inner_rad => end event
+            if dist > self.inner_rad {
+                // The ball left the holder's inner_rad => end event with no dribble
                 event.end_frame = Some(frame.frame_number);
                 event.finished = true; // or false if you consider it 'cut short'
                 return self.active_event.take();
             }
+            
+            // The ball is still in holder's range => update ongoing event
+            event.add_frame(frame.frame_number);
+
+            let defenders = self.detect_defenders(&frame.players, holder);
+            for def in defenders {
+
+                // If a defender is within inner_rad, the event is considered contested
+                event.add_defender(def.id.clone());
+            }
+
+            // If no defenders remain, we end the event. If any of them was ever within inner_rad, it is considered a successful dribble.
+            if event.active_defenders.is_empty() {
+                event.end_frame = Some(frame.frame_number);
+                event.detected_dribble = event.ever_contested;
+                event.finished = true;
+                return self.active_event.take();
+            }
+
+            return self.active_event.clone();
+            
         } else {
             // The holder is not even in the frame (maybe they left?), end event
             event.end_frame = Some(frame.frame_number);

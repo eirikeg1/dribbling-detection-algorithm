@@ -54,6 +54,7 @@ pub fn get_player_models(
                     x: x,
                     y: y,
                     velocity: (0.0, 0.0),
+                    within_inner_rad: false,
                 })
             } else {
                 None
