@@ -53,9 +53,7 @@ fn main() {
 
     // Iterate over videos
     for (vid_num, video_data) in train_iter.enumerate().skip(2) {
-        if vid_num % 1 == 0 {
-            println!("Processing  video {vid_num}...");
-        }
+
         let video_data = video_data.unwrap();
         // let image_dir = video_data.labels.info.im_dir.clone();
         let image_map: HashMap<String, String> = video_data
@@ -73,7 +71,7 @@ fn main() {
             .collect();
 
         let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
-        let file_name = format!("video_{}", vid_num);
+        let file_name = format!("train_video_{}", vid_num);
 
         let mut visualization_builder =
             VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
@@ -119,7 +117,7 @@ fn main() {
             let drible_event = dribble_detector.process_frame(drible_frame);
 
             if drible_event.is_some() && drible_event.as_ref().unwrap().detected_dribble {
-                println!("Drible event detected: {:?}", drible_event);
+                println!(" * Drible event detected: {:?}", drible_event);
             }
 
             visualization_builder

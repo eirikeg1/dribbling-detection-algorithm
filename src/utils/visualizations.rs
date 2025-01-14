@@ -34,8 +34,7 @@ impl<'a> VisualizationBuilder<'a> {
 
         let output_path = output_dir_path.join(format!("{}.avi", file_name));
 
-        println!("Output path: {}", output_path.display());
-        println!("File name: {}", file_name);
+        println!("\nFile name: {file_name}, Output path: {}", output_path.display());
         Ok(Self {
             mode,
             output_path: output_path.to_path_buf(),
@@ -109,7 +108,7 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
     let frame_size = frame.size()?;
 
     if frame_size.width > 0 && frame_size.height > 0 {
-        println!("Initializing writer for path: {}", video_path.display());
+        // println!("Initializing writer for path: {}", video_path.display());
         let writer = VideoWriter::new(
             video_path.to_str().unwrap(),
             // Use a codec that is more widely supported, e.g., 'MJPG'
