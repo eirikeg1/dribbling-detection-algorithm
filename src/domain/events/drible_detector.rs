@@ -49,8 +49,12 @@ impl DribbleDetector {
                         (possession_holder.x, possession_holder.y),
                     ) < self.outer_rad
             })
-            .map(|player| { // Set the within_inner_rad flag
-                let dist = Self::distance((player.x, player.y), (possession_holder.x, possession_holder.y));
+            .map(|player| {
+                // Set the within_inner_rad flag
+                let dist = Self::distance(
+                    (player.x, player.y),
+                    (possession_holder.x, possession_holder.y),
+                );
                 if dist < self.inner_rad {
                     // println!("Player {} is within inner_rad of the ball!", player.id);
                     let mut player = player.clone();
@@ -152,13 +156,12 @@ impl DribbleDetector {
                 event.finished = true; // or false if you consider it 'cut short'
                 return self.active_event.take();
             }
-            
+
             // The ball is still in holder's range => update ongoing event
             event.add_frame(frame.frame_number);
 
             let defenders = self.detect_defenders(&frame.players, holder);
             for def in defenders {
-
                 // If a defender is within inner_rad, the event is considered contested
                 event.add_defender(def.id.clone());
             }
@@ -172,7 +175,6 @@ impl DribbleDetector {
             }
 
             return self.active_event.clone();
-            
         } else {
             // The holder is not even in the frame (maybe they left?), end event
             event.end_frame = Some(frame.frame_number);

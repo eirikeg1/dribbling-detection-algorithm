@@ -34,7 +34,10 @@ impl<'a> VisualizationBuilder<'a> {
 
         let output_path = output_dir_path.join(format!("{}.avi", file_name));
 
-        println!("\nFile name: {file_name}, Output path: {}", output_path.display());
+        println!(
+            "\nFile name: {file_name}, Output path: {}",
+            output_path.display()
+        );
         Ok(Self {
             mode,
             output_path: output_path.to_path_buf(),
@@ -71,7 +74,9 @@ impl<'a> VisualizationBuilder<'a> {
         }
 
         if self.writer.is_none() {
-            self.writer = Some(initialize_writer(&self.output_path, frame).expect("failed to initialize writer"));
+            self.writer = Some(
+                initialize_writer(&self.output_path, frame).expect("failed to initialize writer"),
+            );
         }
 
         if self.mode == "download" {
@@ -117,7 +122,10 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
             frame_size,
             true,
         )?;
-        if !writer.is_opened().expect("failed to check if writer is opened") {
+        if !writer
+            .is_opened()
+            .expect("failed to check if writer is opened")
+        {
             eprintln!(
                 "VideoWriter failed to open for path: {}",
                 video_path.display()
@@ -139,7 +147,6 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
 /// If `autoplay` is enabled in the config, it will return true immediately.
 pub fn handle_keyboard_input(config: &Config) -> Result<bool, opencv::Error> {
     if config.visualization.autoplay {
-
         if highgui::wait_key(1)? == 113 {
             return Ok(false);
         }

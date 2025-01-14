@@ -53,7 +53,6 @@ fn main() {
 
     // Iterate over videos
     for (vid_num, video_data) in train_iter.enumerate().skip(2) {
-
         let video_data = video_data.unwrap();
         // let image_dir = video_data.labels.info.im_dir.clone();
         let image_map: HashMap<String, String> = video_data
@@ -129,14 +128,14 @@ fn main() {
                     drible_event,
                 )
                 .expect("Failed to add frame");
-            
+
             let input_value =
                 handle_keyboard_input(&config).expect("There was an error with keyboard input");
 
             if !input_value {
                 visualization_builder
-                .finish()
-                .expect("Failed to finish visualization");
+                    .finish()
+                    .expect("Failed to finish visualization");
                 return;
             }
         }
