@@ -5,6 +5,7 @@ use dribbling_detection_algorithm::domain::events::create_drible_models::{
 };
 use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
 use dribbling_detection_algorithm::domain::events::drible_models::DribleFrame;
+use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
 use dribbling_detection_algorithm::utils::visualizations::{
     handle_keyboard_input, VisualizationBuilder,
 };
@@ -89,11 +90,13 @@ fn main() {
             let mut frame =
                 imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
-            let filtered_annotations = annotations
-                .iter()
-                .filter(|a| a.image_id == *image_id)
-                .cloned()
-                .collect::<Vec<Annotation>>();
+            let filtered_annotations = filter_annotations(
+                image_id,
+                annotations.clone(),
+                &category_map,
+                config.dribbling_detection.ignore_person_classes,
+                config.dribbling_detection.ignore_teams,
+            );
 
             let ball_model = get_ball_model(&category_map, &filtered_annotations);
             let player_models = get_player_models(&category_map, &filtered_annotations);

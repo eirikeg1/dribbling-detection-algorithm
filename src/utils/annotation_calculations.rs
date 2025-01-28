@@ -1,6 +1,65 @@
-use crate::domain::data::models::Annotation;
+use crate::domain::data::models::{Annotation, Attribute};
 use opencv::core::Scalar;
+use rand::RngCore;
 use std::collections::HashMap;
+
+/// Filters annotations based on team and category. Also handles if we ignore person_class or teams.
+pub fn filter_annotations(
+    image_id: &String,
+    annotations: Vec<Annotation>,
+    categories: &HashMap<String, u32>,
+    ignore_person_class: bool,
+    ignore_teams: bool,
+) -> Vec<Annotation> {
+    let default_player_id = 1;
+    let cat_goalkeeper = categories.get("goalkeeper");
+    let cat_referee = categories.get("referee");
+    let cat_player = categories.get("player");
+
+    annotations
+        .into_iter()
+        .filter_map(|annotation| {
+            if annotation.image_id != *image_id {
+                return None;
+            }
+
+            // Destructure for readability
+            let Annotation {
+                category_id,
+                attributes,
+                ..
+            } = annotation;
+
+            // If ignoring teams, just assign a random placeholder team id
+            let new_team = if ignore_teams {
+                Some(rand::rng().next_u32().to_string())
+            } else {
+                attributes.clone().unwrap_or_default().team
+            };
+
+            // If ignoring person_class, map "goalkeeper"/"referee" => "player"
+            let new_category_id = if ignore_person_class {
+                match category_id {
+                    id if Some(&id) == cat_goalkeeper => *cat_player.unwrap_or(&default_player_id),
+                    id if Some(&id) == cat_referee => *cat_player.unwrap_or(&default_player_id),
+                    id => id,
+                }
+            } else {
+                category_id
+            };
+
+            Some(Annotation {
+                category_id: new_category_id,
+                attributes: Some(Attribute {
+                    role: attributes.as_ref().and_then(|a| a.role.clone()),
+                    jersey: attributes.as_ref().and_then(|a| a.jersey.clone()),
+                    team: new_team,
+                }),
+                ..annotation
+            })
+        })
+        .collect()
+}
 
 pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String, u32>) -> Scalar {
     let team_id = &annotation.attributes.as_ref().unwrap().team;

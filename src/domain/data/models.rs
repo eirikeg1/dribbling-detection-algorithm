@@ -96,7 +96,7 @@ pub struct Annotation {
     pub lines: Option<HashMap<String, Vec<LinePoint>>>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct Attribute {
     pub role: Option<String>,
     pub jersey: Option<String>,

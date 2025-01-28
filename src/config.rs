@@ -22,6 +22,8 @@ pub struct DribblingDetectionConfig {
     pub min_duration: f64,
     pub inner_radius: f64,
     pub outer_radius: f64,
+    pub ignore_person_classes: bool,
+    pub ignore_teams: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
