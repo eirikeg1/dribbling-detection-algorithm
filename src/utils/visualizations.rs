@@ -35,7 +35,7 @@ impl<'a> VisualizationBuilder<'a> {
         let output_path = output_dir_path.join(format!("{}.avi", file_name));
 
         println!(
-            "\nFile name: {file_name}, Output path: {}",
+            "\nCreating visualization for {file_name}, Output path: {}",
             output_path.display()
         );
         Ok(Self {

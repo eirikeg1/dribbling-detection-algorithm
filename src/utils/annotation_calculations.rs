@@ -65,7 +65,7 @@ pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String
     let team_id = &annotation.attributes.as_ref().unwrap().team;
 
     if annotation.category_id == categories["ball"] {
-        return Scalar::new(255.0, 40.0, 185.0, 255.0); // Purple for ball
+        return Scalar::new(237.0, 237.0, 237.0, 255.0); // Gray for ball
     }
 
     // Determine color based on team_id

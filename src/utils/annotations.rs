@@ -1,4 +1,5 @@
 use super::annotation_calculations::get_annotation_color;
+use super::draw_pitch_minimap::draw_pitch_markings_on_minimap;
 use crate::config::Config;
 use crate::domain::data::models::{Annotation, BboxImage};
 use crate::domain::events::drible_models::DribbleEvent;
@@ -21,6 +22,8 @@ pub fn draw_annotations(
         .cloned()
         .collect();
 
+    // Default ball id is 4, TODO: make this configurable
+    let ball_id = categories.get("ball").unwrap_or(&4);
     let scale_factor = config.visualization.scale_factor;
 
     // Draw bounding boxes in the main frame
@@ -53,13 +56,16 @@ pub fn draw_annotations(
     imgproc::rectangle(
         &mut minimap,
         Rect::new(0, 0, minimap_width, minimap_height),
-        Scalar::new(69.0, 160.0, 40.0, 255.0), // Green
+        Scalar::new(69.0, 160.0, 40.0, 255.0), // green background
         -1,
         imgproc::LINE_8,
         0,
     )?;
 
-    // If you have the outer radius in your config, retrieve it here
+    // Draw pitch markings first (center line, penalty boxes, border)
+    draw_pitch_markings_on_minimap(&mut minimap, config)?;
+
+    // Read your circles' configuration
     let outer_rad = config.dribbling_detection.outer_radius;
     let inner_rad = config.dribbling_detection.inner_radius;
     let y_min = config.visualization.y_min;
@@ -69,23 +75,24 @@ pub fn draw_annotations(
 
     // println!(" * Dribble event: {:?}", dribble_event);
 
-    // Draw pitch points (and possibly the circle) onto the minimap
+    // Draw pitch points and handle circle drawing on the minimap
     for annotation in &annotations {
         if let Some(bbox_pitch) = &annotation.bbox_pitch {
+            // Check if this annotation is the possession holder (i.e., the player with the ball)
             let is_possession_holder = match &dribble_event {
                 Some(de) => de.possession_holder == annotation.track_id.unwrap(),
                 None => false,
             };
 
-            // Determine the color of the dot. If the annotation is the possession holder,
-            // use yellow for the player marker
+            // Use a bright color if this annotation is the possession holder;
+            // otherwise, get the default color
             let color = if is_possession_holder {
                 Scalar::new(255.0, 255.0, 40.0, 255.0) // Bright yellow
             } else {
                 get_annotation_color(annotation, categories)
             };
 
-            // 1) Draw the dot for the player
+            // Draw the basic point on the minimap
             draw_pitch_point_on_minimap(
                 &mut minimap,
                 bbox_pitch.x_bottom_middle,
@@ -94,24 +101,24 @@ pub fn draw_annotations(
                 color,
             )?;
 
-            // 2) If the annotation is the possession holder, draw the outer range circle
-            if is_possession_holder {
+            // 2) If there's an active dribble event, draw the inner and outer radii
+            if dribble_event.is_some() && annotation.category_id == *ball_id {
                 // Convert the player's pitch coords to minimap coords
                 let mx = ((bbox_pitch.x_bottom_middle - x_min) / (x_max - x_min)
                     * minimap_width as f64) as i32;
                 let my = ((bbox_pitch.y_bottom_middle - y_min) / (y_max - y_min)
                     * minimap_height as f64) as i32;
 
-                // Convert the `outer_rad` (pitch space) into minimap space
+                // Convert the outer/inner radii (pitch space) into minimap units
                 let inner_rad_x = (inner_rad / (x_max - x_min)) * minimap_width as f64;
                 let inner_rad_y = (inner_rad / (y_max - y_min)) * minimap_height as f64;
                 let outer_rad_x = (outer_rad / (x_max - x_min)) * minimap_width as f64;
                 let outer_rad_y = (outer_rad / (y_max - y_min)) * minimap_height as f64;
+
                 let inner_circle_radius = inner_rad_x.min(inner_rad_y) as i32;
                 let outer_circle_radius = outer_rad_x.min(outer_rad_y) as i32;
 
-                // Draw an outline circle (thickness=2) around the possession holder
-                // to show the "outer range"
+                // Draw outer circle (yellow outline)
                 imgproc::circle(
                     &mut minimap,
                     core::Point::new(mx, my),
@@ -121,7 +128,8 @@ pub fn draw_annotations(
                     imgproc::LINE_8,
                     0,
                 )?;
-                // Draw the inner circle (e.g., orange)
+
+                // Draw inner circle (orange)
                 imgproc::circle(
                     &mut minimap,
                     core::Point::new(mx, my),
@@ -186,9 +194,9 @@ fn draw_pitch_point_on_minimap(
     let mx = ((pitch_x - x_min) / (x_max - x_min) * minimap_width as f64) as i32;
     let my = ((pitch_y - y_min) / (y_max - y_min) * minimap_height as f64) as i32;
 
-    // Draw an opaque dot for the player's position
+    // Draw an opaque dot for the player's (or ball's) position
     let point = core::Point::new(mx, my);
-    imgproc::circle(minimap, point, 4, color, -1, imgproc::LINE_8, 0)?;
+    imgproc::circle(minimap, point, 5, color, -1, imgproc::LINE_8, 0)?;
 
     Ok(())
 }
