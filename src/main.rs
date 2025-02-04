@@ -4,12 +4,13 @@ use dribbling_detection_algorithm::domain::events::create_drible_models::{
     get_ball_model, get_player_models,
 };
 use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
-use dribbling_detection_algorithm::domain::events::drible_models::DribleFrame;
+use dribbling_detection_algorithm::domain::events::drible_models::{Ball, DribleFrame};
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
 use dribbling_detection_algorithm::utils::visualizations::{
     handle_keyboard_input, VisualizationBuilder,
 };
 use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
+use opencv::core::MatTraitConst;
 use opencv::imgcodecs;
 use std::collections::HashMap;
 use std::env;
@@ -46,14 +47,14 @@ fn main() {
     let video_mode: &String = &config.general.video_mode;
 
     let dataset = Dataset::new(config.clone());
-    let train_iter = dataset.iter_subset(&"train");
+    let data_iter = dataset.iter_subset(&"interpolated-predictions");
     let inner_rad = config.dribbling_detection.inner_radius;
     let outer_rad = config.dribbling_detection.outer_radius;
 
     let mut dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
 
     // Iterate over videos
-    for (vid_num, video_data) in train_iter.enumerate().skip(2) {
+    for (vid_num, video_data) in data_iter.enumerate() {
         let video_data = video_data.unwrap();
         // let image_dir = video_data.labels.info.im_dir.clone();
         let image_map: HashMap<String, String> = video_data
@@ -71,7 +72,7 @@ fn main() {
             .collect();
 
         let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
-        let file_name = format!("train_video_{}", vid_num);
+        let file_name = format!("video_{}", vid_num);
 
         let mut visualization_builder =
             VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
@@ -90,6 +91,22 @@ fn main() {
             let mut frame =
                 imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
+            if let Err(err) = std::fs::metadata(&image_path) {
+                eprintln!("File '{:?}' does not exist or cannot be accessed: {}", image_path, err);
+            } else {
+                // proceed to read
+                let frame =
+                    imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR)
+                        .expect(format!("Failed to read image '{:?}'", image_path).as_str());
+
+                if frame.empty() {
+                    eprintln!(
+                        "OpenCV could not decode the image, returning an empty matrix. Path: {:?}",
+                        image_path.to_str().unwrap()
+                    );
+                }
+            }
+
             let filtered_annotations = filter_annotations(
                 image_id,
                 annotations.clone(),
@@ -102,19 +119,19 @@ fn main() {
             let player_models = get_player_models(&category_map, &filtered_annotations);
 
             if player_models.is_none() {
-                // println!("(In main): No players found in frame. Skipping frame...");
+                println!("(In main): No players found in frame. Skipping frame...");
                 continue;
             }
 
-            if ball_model.is_none() {
-                // println!("(In main): No ball  found in frame. Skipping frame...");
-                continue;
-            }
+            // if ball_model.is_none() {
+            //     println!("(In main): No ball  found in frame. Skipping frame...");
+            //     continue;
+            // }
 
             let drible_frame = DribleFrame {
                 frame_number: frame_num as u32,
                 players: player_models.unwrap(),
-                ball: ball_model.unwrap(),
+                ball: ball_model.unwrap_or(Ball { x: 0.0, y: 0.0 }),
             };
             let drible_event = dribble_detector.process_frame(drible_frame);
 

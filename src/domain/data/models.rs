@@ -12,18 +12,18 @@ pub enum SpecialHighlight {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Info {
     pub version: String,
-    pub game_id: String,
-    pub num_tracklets: String,
-    pub action_position: String,
-    pub action_class: String,
-    pub visibility: String,
-    pub game_time_start: String,
-    pub game_time_stop: String,
+    pub game_id: Option<String>,
+    pub num_tracklets: Option<String>,
+    pub action_position: Option<String>,
+    pub action_class: Option<String>,
+    pub visibility: Option<String>,
+    pub game_time_start: Option<String>,
+    pub game_time_stop: Option<String>,
     pub clip_start: String,
     pub clip_stop: String,
     pub name: String,
     pub im_dir: Option<String>,
-    pub frame_rate: u32,
+    pub frame_rate: f32,
     pub seq_length: u32,
     pub im_ext: String,
 }
@@ -36,8 +36,8 @@ pub struct Image {
     pub file_name: String,
     pub height: u32,
     pub width: u32,
-    pub has_labeled_person: bool,
-    pub has_labeled_pitch: bool,
+    pub has_labeled_person: Option<bool>,
+    pub has_labeled_pitch: Option<bool>,
 }
 
 // Represents the image-space bounding box
