@@ -2,9 +2,14 @@
 
 A Rust-based implementation for detecting dribbling events on the [SoccerNet Game State Reconstruction 2024](https://www.soccer-net.org/) dataset. The goal behind this tool is not to get the most accurate predictions,but to get a set of good candidates which can be manually approved/rejected later. Therefore this is not indended to be used for classification, but to build a dataset quickly.
 
+
+![Dribling detection example](images/image-1.png)
+
+
 ## Dataset
 
-* This tool is designed for the SoccerNet GSR 2024 dataset.
+* This tool is designed for data in the same format of the [Soccer net game state recognition challenge](https://github.com/SoccerNet/sn-gamestate/).
+* An end-to-end pipeline which can easily preprocess and annotate a raw video file to the expected format can be found in the drible detection pipeline [github](https://github.com/eirikeg1/dribbling-detection-algorithm). By disabling the last step of the pipeline in the config file, only the preprocessed dataset is saved.
 * A simple way to download the data is through the official [Hugging Face dataset](https://huggingface.co/datasets/SoccerNet/SN-GSR-2025).
 * The official challenge repository, with other instructions of how to download the data can be found at [sn-gamestate](https://github.com/SoccerNet/sn-gamestate)
 * Refer to the official [SoccerNet website](https://www.soccer-net.org/) for more information about soccernet and their challenges/datasets
