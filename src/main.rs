@@ -1,15 +1,15 @@
-use dribbling_detection_algorithm::dribling_detection::data::download_data::download_and_extract_dataset;
-use dribbling_detection_algorithm::dribling_detection::data::models::Annotation;
-use dribbling_detection_algorithm::dribling_detection::events::create_drible_models::{
+use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
+use dribbling_detection_algorithm::data::models::Annotation;
+use dribbling_detection_algorithm::dribbling_detection::create_drible_models::{
     get_ball_model, get_player_models,
 };
-use dribbling_detection_algorithm::dribling_detection::events::drible_detector::DribbleDetector;
-use dribbling_detection_algorithm::dribling_detection::events::drible_models::{Ball, DribleFrame};
+use dribbling_detection_algorithm::dribbling_detection::drible_detector::DribbleDetector;
+use dribbling_detection_algorithm::dribbling_detection::drible_models::{Ball, DribleFrame};
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
 use dribbling_detection_algorithm::utils::visualizations::{
     wait_for_keyboard_input, VisualizationBuilder,
 };
-use dribbling_detection_algorithm::{config::Config, dribling_detection::data::dataset::Dataset};
+use dribbling_detection_algorithm::{config::Config, data::dataset::Dataset};
 use opencv::core::MatTraitConst;
 use opencv::imgcodecs;
 use std::collections::HashMap;

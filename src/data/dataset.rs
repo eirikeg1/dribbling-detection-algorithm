@@ -1,6 +1,6 @@
 use super::models::VideoData;
 use crate::config::Config;
-use crate::domain::data::models::Labels;
+use crate::data::models::Labels;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fs::{self, File};
