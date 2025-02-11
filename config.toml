@@ -4,29 +4,31 @@ log_level = "info"  # Possible values: "debug", "info", "warn", "error"
 video_mode = "display" # Possible values: "download", "display" (If using SSH display might be slow)
 
 [dribbling_detection]
-threshold = 0.7  # Threshold for dribbling detection confidence
+outer_threshold = 5  # Minumum number of frames in an event. Mainly to prevent predictions of jumping 2d coords
+inner_threshold = 3 # The time a player is within the inner threshold does not count to outer
 frame_skip = 5
 min_duration = 1.5  # Minimum duration for an action to be classified as dribbling
-inner_radius = 1.8 # Percent of screen from ball
+inner_radius = 2.1 # Percent of screen from ball
 outer_radius = 3.2
 ignore_person_classes = false
 ignore_teams = false
 
 [visualization]
-autoplay = true
+autoplay = false
 scale_factor = 0.6 # Scale factor for video and player bounding boxes. Usually best to keep at 1 if downloading
 minimap_x = 20
 minimap_y = 200
-minimap_width = 900 # 600
-minimap_height = 450 # 186
-x_min = -60.0
-x_max = 60.0
+minimap_width = 926 # 600
+minimap_height = 600 # 186
+x_min = -52.0
+x_max = 52.0
 y_min = -34.0
 y_max = 34.0
 
 [data]
-data_path = "/home/eirik/Projects/data/SoccerNetGS"
+# data_path = "data/SoccerNetGS" # TODO: Implement "test" for test data path
+data_path = "path/to/data"
 # subsets = ["train", "valid", "test", "challenge"]
-subsets = ["train"]
+subsets = ["interpolated-predictions"]
 output_path = "data/output"
 huggingface_dataset_url = "https://datasets-server.huggingface.co/first-rows?dataset=SoccerNet%2FSN-GSR-2025&config=default"

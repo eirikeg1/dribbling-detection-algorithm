@@ -26,6 +26,7 @@ pub struct DribleFrame {
 pub struct DribbleEvent {
     pub finished: bool,
     pub detected_dribble: bool,
+    pub detected_tackle: bool, // <-- New field for tackle classification.
     pub ever_contested: bool,
     pub possession_holder: u32,
     pub start_frame: u32,
@@ -40,6 +41,7 @@ impl DribbleEvent {
         DribbleEvent {
             finished: false,
             detected_dribble: false,
+            detected_tackle: false, // <-- Initialize new field.
             ever_contested: false,
             possession_holder,
             start_frame,

@@ -51,7 +51,12 @@ fn main() {
     let inner_rad = config.dribbling_detection.inner_radius;
     let outer_rad = config.dribbling_detection.outer_radius;
 
-    let mut dribble_detector = DribbleDetector::new(inner_rad, outer_rad);
+    let mut dribble_detector = DribbleDetector::new(
+        inner_rad,
+        outer_rad,
+        config.dribbling_detection.inner_threshold,
+        config.dribbling_detection.outer_threshold,
+    );
 
     // Iterate over videos
     for (vid_num, video_data) in data_iter.enumerate() {
@@ -78,7 +83,7 @@ fn main() {
             VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
                 .expect("Failed to create visualization builder");
 
-        for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate() {
+        for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate().skip(4) {
             let image_file_name = image_path
                 .to_string_lossy()
                 .split('/')
@@ -92,7 +97,10 @@ fn main() {
                 imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
             if let Err(err) = std::fs::metadata(&image_path) {
-                eprintln!("File '{:?}' does not exist or cannot be accessed: {}", image_path, err);
+                eprintln!(
+                    "File '{:?}' does not exist or cannot be accessed: {}",
+                    image_path, err
+                );
             } else {
                 // proceed to read
                 let frame =
@@ -136,8 +144,23 @@ fn main() {
             let drible_event = dribble_detector.process_frame(drible_frame);
 
             if drible_event.is_some() && drible_event.as_ref().unwrap().detected_dribble {
-                println!(" * Drible event detected: {:?}", drible_event);
+                println!(
+                    " * Drible event detected: {:?}",
+                    drible_event.as_ref().unwrap().frames
+                );
+            } else if drible_event.is_some() && drible_event.as_ref().unwrap().detected_tackle {
+                println!(
+                    " * Tackle event detected: {:?}",
+                    drible_event.as_ref().unwrap().frames
+                );
             }
+            // else if drible_event.is_some() && drible_event.as_ref().unwrap().ever_contested {
+            //     println!(" * Contested dribble event detected.");
+            // } else if drible_event.is_some() {
+            //     println!(" * Uncontested dribble event detected.");
+            // } else {
+            //     println!(" * No dribble event detected.");
+            // }
 
             visualization_builder
                 .add_frame(
