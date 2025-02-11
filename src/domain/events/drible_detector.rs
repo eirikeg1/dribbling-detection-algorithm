@@ -1,4 +1,5 @@
-use super::drible_models::{Ball, DribbleEvent, DribleFrame, Player};
+use super::drible_models::{DribbleEvent, DribleFrame, Player};
+use std::collections::HashSet;
 
 pub struct DribbleDetector {
     pub outer_rad: f64,
@@ -8,178 +9,138 @@ pub struct DribbleDetector {
 
 impl DribbleDetector {
     pub fn new(inner_rad: f64, outer_rad: f64) -> Self {
-        DribbleDetector {
+        Self {
             outer_rad,
             inner_rad,
             active_event: None,
         }
     }
 
+    /// Returns the Euclidean distance between two points.
     pub fn distance(p1: (f64, f64), p2: (f64, f64)) -> f64 {
         ((p2.0 - p1.0).powi(2) + (p2.1 - p1.1).powi(2)).sqrt()
     }
 
-    /// Finds the closest player to the ball, if any.
-    /// (Does not check any distance threshold.)
-    pub fn closest_player_to_ball<'a>(
-        &self,
-        players: &'a [Player],
-        ball: &Ball,
-    ) -> Option<&'a Player> {
-        players.iter().min_by(|p1, p2| {
-            let d1 = Self::distance((p1.x, p1.y), (ball.x, ball.y));
-            let d2 = Self::distance((p2.x, p2.y), (ball.x, ball.y));
-            d1.partial_cmp(&d2).unwrap()
-        })
-    }
-
-    /// Find which players are within outer_rad of the given possession holder
-    pub fn detect_defenders<'a>(
-        &self,
-        players: &'a [Player],
-        possession_holder: &Player,
-    ) -> Vec<&'a Player> {
-        players
-            .iter()
-            .filter(|player| {
-                // skip the holder themselves
-                player.id != possession_holder.id
-                    && Self::distance(
-                        (player.x, player.y),
-                        (possession_holder.x, possession_holder.y),
-                    ) < self.outer_rad
-            })
-            .map(|player| {
-                // Set the within_inner_rad flag
-                let dist = Self::distance(
-                    (player.x, player.y),
-                    (possession_holder.x, possession_holder.y),
-                );
-                if dist < self.inner_rad {
-                    // println!("Player {} is within inner_rad of the ball!", player.id);
-                    let mut player = player.clone();
-                    player.within_inner_rad = true;
+    /// A static helper that calculates:
+    ///   - All defenders (player IDs) within `outer_rad`
+    ///   - The subset of those defenders who are also within `inner_rad`
+    pub fn calc_defenders(
+        players: &[Player],
+        holder: &Player,
+        outer_rad: f64,
+        inner_rad: f64,
+    ) -> (Vec<u32>, Vec<u32>) {
+        let mut defenders = Vec::new();
+        let mut inner_defenders = Vec::new();
+        for player in players {
+            if player.id != holder.id {
+                let d = Self::distance((player.x, player.y), (holder.x, holder.y));
+                if d < outer_rad {
+                    defenders.push(player.id);
+                    if d < inner_rad {
+                        inner_defenders.push(player.id);
+                    }
                 }
-                player
-            })
-            .collect()
+            }
+        }
+        (defenders, inner_defenders)
     }
 
-    /// Called once per frame.
-    /// - If there's an active event, update/end it.
-    /// - If an event ends, optionally check if a new one starts.
-    /// - If no event is active, see if a new event starts.
+    /// Process a frame by either updating an active event or starting a new one.
     pub fn process_frame(&mut self, frame: DribleFrame) -> Option<DribbleEvent> {
-        // println!("Current event state: {:?}", self.active_event);
-        let mut event = self.active_event.clone();
-        if event.is_some() {
-            let mut event = event.take().unwrap();
-            // There is a currently active event
-            let completed_event = self.handle_active_event(&frame, &mut event).unwrap();
-            if completed_event.finished {
-                // The old event ended.
-                // println!("Ended event: {:?}", completed_event);
-
-                // Optionally check if a new event starts THIS FRAME:
-                if let Some(new_event) = self.handle_search_state(&frame) {
-                    // Return the new event (or you could return the old + new, depending on your design)
-                    return Some(new_event);
-                }
-
-                // If no new event started, just return the one that ended
-                return Some(completed_event);
-            } else {
-                // println!("Continuing event: {:?}", event);
-                // The event is still active
-                self.active_event = Some(event);
-                return self.active_event.clone();
-            }
+        if self.active_event.is_some() {
+            self.update_active_event(&frame)
         } else {
-            // No active event -> try to start a new one
-            // println!("No active event. Searching for new event...");
-            self.active_event = None;
-            if let Some(new_event) = self.handle_search_state(&frame) {
-                return Some(new_event);
-            }
-            // Otherwise, do nothing
-            None
+            self.try_start_event(&frame)
         }
     }
 
-    /// If no event is active, see if a new dribble event can start.
-    /// (We only start if at least one player is within inner_rad of the ball.)
-    fn handle_search_state(&mut self, frame: &DribleFrame) -> Option<DribbleEvent> {
-        // Find who is closest to the ball
-        // println!("\n\nSearching for new event...");
-        if let Some(closest_player) = self.closest_player_to_ball(&frame.players, &frame.ball) {
-            let dist = Self::distance(
-                (closest_player.x, closest_player.y),
-                (frame.ball.x, frame.ball.y),
-            );
-            // If within inner_rad, that player takes possession => new event
-            if dist < self.inner_rad {
-                let mut event = DribbleEvent::new(closest_player.id.clone(), frame.frame_number);
-
-                // Possibly also detect defenders
-                let defenders = self.detect_defenders(&frame.players, closest_player);
-                for d in defenders {
-                    event.add_defender(d.id.clone());
-                }
+    /// Try to start a new dribble event.
+    /// We start if a player is in possession (ball is within inner_rad) and there is at least one opponent nearby.
+    fn try_start_event(&mut self, frame: &DribleFrame) -> Option<DribbleEvent> {
+        if let Some(holder) = frame
+            .players
+            .iter()
+            .find(|p| Self::distance((p.x, p.y), (frame.ball.x, frame.ball.y)) < self.inner_rad)
+        {
+            let (defenders, inner_defenders) =
+                Self::calc_defenders(&frame.players, holder, self.outer_rad, self.inner_rad);
+            if !defenders.is_empty() {
+                let mut event = DribbleEvent::new(holder.id, frame.frame_number);
+                event.active_defenders = defenders;
+                event.inner_defenders = inner_defenders;
                 self.active_event = Some(event.clone());
-                // println!("Started new event: {:?}", event);
                 return Some(event);
             }
         }
         None
     }
 
-    /// Update or end the existing event.
-    /// We do NOT change possession mid-event. If the ball leaves `inner_rad`,
-    /// the event ends. We do not pass the ball to another player in here.
-    /// If the event ends, return Some(...). Otherwise, return None.
-    fn handle_active_event(
-        &mut self,
-        frame: &DribleFrame,
-        event: &mut DribbleEvent,
-    ) -> Option<DribbleEvent> {
-        // The possession holder is fixed throughout the event
-        let holder_id = event.possession_holder.clone();
+    /// Update the currently active event based on the new frame.
+    fn update_active_event(&mut self, frame: &DribleFrame) -> Option<DribbleEvent> {
+        if let Some(ref mut event) = self.active_event {
+            // Locate the possession holder.
+            if let Some(holder) = frame
+                .players
+                .iter()
+                .find(|p| p.id == event.possession_holder)
+            {
+                let ball_dist = Self::distance((holder.x, holder.y), (frame.ball.x, frame.ball.y));
+                // End event if the ball leaves the inner radius.
+                if ball_dist > self.inner_rad {
+                    event.end_frame = Some(frame.frame_number);
+                    event.finished = true;
+                    let finished_event = event.clone();
+                    self.active_event = None;
+                    return Some(finished_event);
+                }
 
-        // Find the event's holder among the current frame's players
-        if let Some(holder) = frame.players.iter().find(|p| p.id == holder_id) {
-            // Check distance to the ball
-            let dist = Self::distance((holder.x, holder.y), (frame.ball.x, frame.ball.y));
+                event.add_frame(frame.frame_number);
 
-            if dist > self.inner_rad {
-                // The ball left the holder's inner_rad => end event with no dribble
+                // Recalculate defenders and inner defenders.
+                let (defenders, new_inner_defenders) =
+                    Self::calc_defenders(&frame.players, holder, self.outer_rad, self.inner_rad);
+
+                // Check if any defender that was previously inside the inner rad is no longer there.
+                let previous_inner: HashSet<u32> = event.inner_defenders.iter().cloned().collect();
+                let current_inner: HashSet<u32> = new_inner_defenders.iter().cloned().collect();
+                if previous_inner.difference(&current_inner).next().is_some() {
+                    // A defender left the inner radius: finish event as a successful dribble.
+                    event.end_frame = Some(frame.frame_number);
+                    event.detected_dribble = true;
+                    event.finished = true;
+                    let finished_event = event.clone();
+                    self.active_event = None;
+                    return Some(finished_event);
+                }
+
+                // Update the event with the new lists.
+                event.inner_defenders = new_inner_defenders;
+                event.active_defenders = defenders;
+                if !event.inner_defenders.is_empty() {
+                    event.ever_contested = true;
+                }
+
+                // End event if no defenders remain within the outer radius.
+                if event.active_defenders.is_empty() {
+                    event.end_frame = Some(frame.frame_number);
+                    event.detected_dribble = event.ever_contested;
+                    event.finished = true;
+                    let finished_event = event.clone();
+                    self.active_event = None;
+                    return Some(finished_event);
+                }
+
+                return Some(event.clone());
+            } else {
+                // If the possession holder isn’t in the frame, end the event.
                 event.end_frame = Some(frame.frame_number);
-                event.finished = true; // or false if you consider it 'cut short'
-                return self.active_event.take();
+                event.finished = false;
+                let finished_event = event.clone();
+                self.active_event = None;
+                return Some(finished_event);
             }
-
-            // The ball is still in holder's range => update ongoing event
-            event.add_frame(frame.frame_number);
-
-            let defenders = self.detect_defenders(&frame.players, holder);
-            for def in defenders {
-                // If a defender is within inner_rad, the event is considered contested
-                event.add_defender(def.id.clone());
-            }
-
-            // If no defenders remain, we end the event. If any of them was ever within inner_rad, it is considered a successful dribble.
-            if event.active_defenders.is_empty() {
-                event.end_frame = Some(frame.frame_number);
-                event.detected_dribble = event.ever_contested;
-                event.finished = true;
-                return self.active_event.take();
-            }
-
-            return self.active_event.clone();
-        } else {
-            // The holder is not even in the frame (maybe they left?), end event
-            event.end_frame = Some(frame.frame_number);
-            event.finished = false;
-            return self.active_event.take();
         }
+        None
     }
 }

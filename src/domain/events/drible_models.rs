@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::f64;
 
 #[derive(Debug, Clone)]
@@ -32,22 +31,8 @@ pub struct DribbleEvent {
     pub start_frame: u32,
     pub end_frame: Option<u32>,
     pub frames: Vec<u32>,
-    pub active_defenders: HashSet<u32>,
-}
-
-impl Default for DribbleEvent {
-    fn default() -> Self {
-        DribbleEvent {
-            finished: false,
-            detected_dribble: false,
-            ever_contested: false,
-            possession_holder: u32::MAX,
-            start_frame: 0,
-            end_frame: None,
-            frames: Vec::new(),
-            active_defenders: HashSet::new(),
-        }
-    }
+    pub active_defenders: Vec<u32>,
+    pub inner_defenders: Vec<u32>,
 }
 
 impl DribbleEvent {
@@ -56,19 +41,16 @@ impl DribbleEvent {
             finished: false,
             detected_dribble: false,
             ever_contested: false,
-            possession_holder: possession_holder,
-            start_frame: start_frame,
+            possession_holder,
+            start_frame,
             end_frame: None,
             frames: vec![start_frame],
-            active_defenders: HashSet::new(),
+            active_defenders: Vec::new(),
+            inner_defenders: Vec::new(),
         }
     }
 
     pub fn add_frame(&mut self, frame: u32) {
         self.frames.push(frame);
-    }
-
-    pub fn add_defender(&mut self, defender_id: u32) {
-        self.active_defenders.insert(defender_id);
     }
 }
