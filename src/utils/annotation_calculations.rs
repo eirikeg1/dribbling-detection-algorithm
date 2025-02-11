@@ -1,4 +1,4 @@
-use crate::domain::data::models::{Annotation, Attribute};
+use crate::data::models::{Annotation, Attribute};
 use opencv::core::Scalar;
 use rand::RngCore;
 use std::collections::HashMap;
@@ -129,7 +129,7 @@ pub fn calculate_bbox_pitch_center(annotation: Annotation) -> Option<(f64, f64)>
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::data::models::BboxPitch;
+    use crate::data::models::BboxPitch;
 
     use super::*;
 

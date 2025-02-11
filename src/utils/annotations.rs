@@ -1,8 +1,8 @@
 use super::annotation_calculations::get_annotation_color;
 use super::draw_pitch_minimap::draw_pitch_markings_on_minimap;
 use crate::config::Config;
-use crate::domain::data::models::{Annotation, BboxImage};
-use crate::domain::events::drible_models::DribbleEvent;
+use crate::data::models::{Annotation, BboxImage};
+use crate::dribbling_detection::drible_models::DribbleEvent;
 use opencv::core::{self, Mat, Rect, Scalar};
 use opencv::imgproc;
 use opencv::prelude::*;

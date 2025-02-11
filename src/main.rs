@@ -1,15 +1,15 @@
-use dribbling_detection_algorithm::domain::data::download_data::download_and_extract_dataset;
-use dribbling_detection_algorithm::domain::data::models::Annotation;
-use dribbling_detection_algorithm::domain::events::create_drible_models::{
+use dribbling_detection_algorithm::dribling_detection::data::download_data::download_and_extract_dataset;
+use dribbling_detection_algorithm::dribling_detection::data::models::Annotation;
+use dribbling_detection_algorithm::dribling_detection::events::create_drible_models::{
     get_ball_model, get_player_models,
 };
-use dribbling_detection_algorithm::domain::events::drible_detector::DribbleDetector;
-use dribbling_detection_algorithm::domain::events::drible_models::{Ball, DribleFrame};
+use dribbling_detection_algorithm::dribling_detection::events::drible_detector::DribbleDetector;
+use dribbling_detection_algorithm::dribling_detection::events::drible_models::{Ball, DribleFrame};
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
 use dribbling_detection_algorithm::utils::visualizations::{
-    handle_keyboard_input, VisualizationBuilder,
+    wait_for_keyboard_input, VisualizationBuilder,
 };
-use dribbling_detection_algorithm::{config::Config, domain::data::dataset::Dataset};
+use dribbling_detection_algorithm::{config::Config, dribling_detection::data::dataset::Dataset};
 use opencv::core::MatTraitConst;
 use opencv::imgcodecs;
 use std::collections::HashMap;
@@ -83,7 +83,7 @@ fn main() {
             VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
                 .expect("Failed to create visualization builder");
 
-        for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate().skip(4) {
+        for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate() {
             let image_file_name = image_path
                 .to_string_lossy()
                 .split('/')
@@ -131,10 +131,10 @@ fn main() {
                 continue;
             }
 
-            // if ball_model.is_none() {
-            //     println!("(In main): No ball  found in frame. Skipping frame...");
-            //     continue;
-            // }
+            if ball_model.is_none() {
+                println!("(In main): No ball  found in frame. Skipping frame...");
+                continue;
+            }
 
             let drible_frame = DribleFrame {
                 frame_number: frame_num as u32,
@@ -173,7 +173,7 @@ fn main() {
                 .expect("Failed to add frame");
 
             let input_value =
-                handle_keyboard_input(&config).expect("There was an error with keyboard input");
+                wait_for_keyboard_input(&config).expect("There was an error with keyboard input");
 
             if !input_value {
                 visualization_builder

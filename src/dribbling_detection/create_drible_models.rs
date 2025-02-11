@@ -1,12 +1,7 @@
+use super::drible_models::{Ball, Player};
+use crate::data::models::Annotation;
+use crate::utils::annotation_calculations::calculate_bbox_pitch_center;
 use std::collections::HashMap;
-
-use crate::{
-    domain::{
-        data::models::Annotation,
-        events::drible_models::{Ball, Player},
-    },
-    utils::annotation_calculations::calculate_bbox_pitch_center,
-};
 
 pub fn get_ball_model(
     category_map: &HashMap<String, u32>,
