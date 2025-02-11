@@ -1,4 +1,4 @@
-use super::drible_models::{Ball, Player};
+use super::dribble_models::{Ball, Player};
 use crate::data::models::Annotation;
 use crate::utils::annotation_calculations::calculate_bbox_pitch_center;
 use std::collections::HashMap;

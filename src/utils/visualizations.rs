@@ -1,5 +1,5 @@
 use crate::data::models::Annotation;
-use crate::{config::Config, dribbling_detection::drible_models::DribbleEvent};
+use crate::{config::Config, dribbling_detection::dribble_models::DribbleEvent};
 use opencv::{core::Mat, highgui, prelude::*, videoio::VideoWriter};
 use std::collections::HashMap;
 use std::{
@@ -60,7 +60,7 @@ impl<'a> VisualizationBuilder<'a> {
         image_id: Option<&str>,
         annotations: Option<&[Annotation]>,
         categories: &HashMap<String, u32>,
-        drible_event: Option<DribbleEvent>,
+        dribble_event: Option<DribbleEvent>,
     ) -> opencv::Result<()> {
         if frame.empty() {
             eprintln!("Warning: Empty frame was provided.");
@@ -70,7 +70,7 @@ impl<'a> VisualizationBuilder<'a> {
         scale_frame(frame, self.config)?;
 
         if let (Some(id), Some(ann)) = (image_id, annotations) {
-            draw_annotations(frame, ann, categories, drible_event, &id, self.config)?;
+            draw_annotations(frame, ann, categories, dribble_event, &id, self.config)?;
         }
 
         if self.writer.is_none() {

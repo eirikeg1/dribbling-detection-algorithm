@@ -16,7 +16,7 @@ pub struct Ball {
 }
 
 #[derive(Debug, Clone)]
-pub struct DribleFrame {
+pub struct DribbleFrame {
     pub frame_number: u32,
     pub players: Vec<Player>,
     pub ball: Ball,

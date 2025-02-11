@@ -1,10 +1,10 @@
 use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::data::models::Annotation;
-use dribbling_detection_algorithm::dribbling_detection::create_drible_models::{
+use dribbling_detection_algorithm::dribbling_detection::create_dribble_models::{
     get_ball_model, get_player_models,
 };
-use dribbling_detection_algorithm::dribbling_detection::drible_detector::DribbleDetector;
-use dribbling_detection_algorithm::dribbling_detection::drible_models::{Ball, DribleFrame};
+use dribbling_detection_algorithm::dribbling_detection::dribble_detector::DribbleDetector;
+use dribbling_detection_algorithm::dribbling_detection::dribble_models::{Ball, DribbleFrame};
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
 use dribbling_detection_algorithm::utils::keyboard_input::{
     wait_for_keyboard_input, KeyboardInput,
@@ -137,27 +137,27 @@ fn main() {
             //     continue;
             // }
 
-            let drible_frame = DribleFrame {
+            let dribble_frame = DribbleFrame {
                 frame_number: frame_num as u32,
                 players: player_models.unwrap(),
                 ball: ball_model.unwrap_or(Ball { x: 0.0, y: 0.0 }),
             };
-            let drible_event = dribble_detector.process_frame(drible_frame);
+            let dribble_event = dribble_detector.process_frame(dribble_frame);
 
-            if drible_event.is_some() && drible_event.as_ref().unwrap().detected_dribble {
+            if dribble_event.is_some() && dribble_event.as_ref().unwrap().detected_dribble {
                 println!(
-                    " * Drible event detected: {:?}",
-                    drible_event.as_ref().unwrap().frames
+                    " * Dribble event detected: {:?}",
+                    dribble_event.as_ref().unwrap().frames
                 );
-            } else if drible_event.is_some() && drible_event.as_ref().unwrap().detected_tackle {
+            } else if dribble_event.is_some() && dribble_event.as_ref().unwrap().detected_tackle {
                 println!(
                     " * Tackle event detected: {:?}",
-                    drible_event.as_ref().unwrap().frames
+                    dribble_event.as_ref().unwrap().frames
                 );
             }
-            // else if drible_event.is_some() && drible_event.as_ref().unwrap().ever_contested {
+            // else if dribble_event.is_some() && dribble_event.as_ref().unwrap().ever_contested {
             //     println!(" * Contested dribble event detected.");
-            // } else if drible_event.is_some() {
+            // } else if dribble_event.is_some() {
             //     println!(" * Uncontested dribble event detected.");
             // } else {
             //     println!(" * No dribble event detected.");
@@ -169,7 +169,7 @@ fn main() {
                     Some(image_id),
                     Some(&filtered_annotations),
                     &category_map,
-                    drible_event,
+                    dribble_event,
                 )
                 .expect("Failed to add frame");
 

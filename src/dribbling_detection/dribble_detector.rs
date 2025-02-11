@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use super::drible_models::{DribbleEvent, DribleFrame, Player};
+use super::dribble_models::{DribbleEvent, DribbleFrame, Player};
 
 /// Detects dribble events. An event is started when a defender enters the outer radius,
 /// becomes contested if a defender is inside the inner radius for at least `inner_threshold` frames,
@@ -67,7 +67,7 @@ impl DribbleDetector {
     }
 
     /// Process a frame by either starting a new event or updating an ongoing event.
-    pub fn process_frame(&mut self, frame: DribleFrame) -> Option<DribbleEvent> {
+    pub fn process_frame(&mut self, frame: DribbleFrame) -> Option<DribbleEvent> {
         if self.active_event.is_some() {
             self.update_active_event(&frame)
         } else {
@@ -79,7 +79,7 @@ impl DribbleDetector {
     ///
     /// We start if a player is in possession (ball is within the inner radius) and at least one opponent
     /// is in the outer zone.
-    fn try_start_event(&mut self, frame: &DribleFrame) -> Option<DribbleEvent> {
+    fn try_start_event(&mut self, frame: &DribbleFrame) -> Option<DribbleEvent> {
         if let Some(holder) = frame
             .players
             .iter()
@@ -102,7 +102,7 @@ impl DribbleDetector {
     }
 
     /// Update the currently active event using the new frame.
-    fn update_active_event(&mut self, frame: &DribleFrame) -> Option<DribbleEvent> {
+    fn update_active_event(&mut self, frame: &DribbleFrame) -> Option<DribbleEvent> {
         if let Some(ref mut event) = self.active_event {
             // Retrieve the current possession holder.
             let old_holder = match frame

@@ -9,7 +9,7 @@ A Rust-based implementation for detecting dribbling events on the [SoccerNet Gam
 ## Dataset
 
 * This tool is designed for data in the same format of the [Soccer net game state recognition challenge](https://github.com/SoccerNet/sn-gamestate/).
-* An end-to-end pipeline which can easily preprocess and annotate a raw video file to the expected format can be found in the drible detection pipeline [github](https://github.com/eirikeg1/dribbling-detection-algorithm). By disabling the last step of the pipeline in the config file, only the preprocessed dataset is saved.
+* An end-to-end pipeline which can easily preprocess and annotate a raw video file to the expected format can be found in the dribble detection pipeline [github](https://github.com/eirikeg1/dribbling-detection-algorithm). By disabling the last step of the pipeline in the config file, only the preprocessed dataset is saved.
 * A simple way to download the data is through the official [Hugging Face dataset](https://huggingface.co/datasets/SoccerNet/SN-GSR-2025).
 * The official challenge repository, with other instructions of how to download the data can be found at [sn-gamestate](https://github.com/SoccerNet/sn-gamestate)
 * Refer to the official [SoccerNet website](https://www.soccer-net.org/) for more information about soccernet and their challenges/datasets
@@ -67,7 +67,7 @@ cargo run
 
 # Algorithm Description
 
-This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a drible. It is based on the players 2d coordinate on the field (after a homographic transform)
+This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a dribble. It is based on the players 2d coordinate on the field (after a homographic transform)
 
 ---
 

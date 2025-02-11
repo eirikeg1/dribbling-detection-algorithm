@@ -1,3 +1,3 @@
-pub mod create_drible_models;
-pub mod drible_detector;
-pub mod drible_models;
+pub mod create_dribble_models;
+pub mod dribble_detector;
+pub mod dribble_models;
