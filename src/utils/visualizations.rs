@@ -142,21 +142,3 @@ fn initialize_writer(video_path: &Path, frame: &opencv::core::Mat) -> opencv::Re
         ))
     }
 }
-
-/// Wait for user input to continue or quit. Returns false if user inputs "q".
-/// If `autoplay` is enabled in the config, it will return true immediately.
-pub fn wait_for_keyboard_input(config: &Config) -> Result<bool, opencv::Error> {
-    if config.visualization.autoplay {
-        if highgui::wait_key(1)? == 113 {
-            return Ok(false);
-        }
-
-        return Ok(true);
-    }
-
-    if highgui::wait_key(0)? == 113 {
-        return Ok(false);
-    }
-
-    Ok(true)
-}

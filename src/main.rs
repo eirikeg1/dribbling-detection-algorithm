@@ -6,9 +6,10 @@ use dribbling_detection_algorithm::dribbling_detection::create_drible_models::{
 use dribbling_detection_algorithm::dribbling_detection::drible_detector::DribbleDetector;
 use dribbling_detection_algorithm::dribbling_detection::drible_models::{Ball, DribleFrame};
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
-use dribbling_detection_algorithm::utils::visualizations::{
-    wait_for_keyboard_input, VisualizationBuilder,
+use dribbling_detection_algorithm::utils::keyboard_input::{
+    wait_for_keyboard_input, KeyboardInput,
 };
+use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, data::dataset::Dataset};
 use opencv::core::MatTraitConst;
 use opencv::imgcodecs;
@@ -131,10 +132,10 @@ fn main() {
                 continue;
             }
 
-            if ball_model.is_none() {
-                println!("(In main): No ball  found in frame. Skipping frame...");
-                continue;
-            }
+            // if ball_model.is_none() {
+            //     println!("(In main): No ball  found in frame. Skipping frame...");
+            //     continue;
+            // }
 
             let drible_frame = DribleFrame {
                 frame_number: frame_num as u32,
@@ -172,14 +173,25 @@ fn main() {
                 )
                 .expect("Failed to add frame");
 
+            // Handle keyboard input
             let input_value =
                 wait_for_keyboard_input(&config).expect("There was an error with keyboard input");
 
-            if !input_value {
-                visualization_builder
-                    .finish()
-                    .expect("Failed to finish visualization");
-                return;
+            match input_value {
+                KeyboardInput::Quit => {
+                    visualization_builder
+                        .finish()
+                        .expect("Failed to finish visualization");
+                    return;
+                }
+                KeyboardInput::NextFrame => {}
+                KeyboardInput::PreviousFrame => {}
+                KeyboardInput::NextVideo => {
+                    visualization_builder
+                        .finish()
+                        .expect("Failed to finish visualization");
+                    break;
+                }
             }
         }
 
