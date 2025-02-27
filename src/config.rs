@@ -25,6 +25,8 @@ pub struct DribblingDetectionConfig {
     pub outer_radius: f64,
     pub ignore_person_classes: bool,
     pub ignore_teams: bool,
+    pub outer_in_threshold: u32,
+    pub outer_out_threshold: u32,
 }
 
 #[derive(Clone, Debug, Deserialize)]

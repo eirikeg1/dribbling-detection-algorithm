@@ -1,10 +1,12 @@
 use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
-use dribbling_detection_algorithm::data::models::Annotation;
+use dribbling_detection_algorithm::data::models::{Annotation, VideoData};
 use dribbling_detection_algorithm::dribbling_detection::create_dribble_models::{
     get_ball_model, get_player_models,
 };
-use dribbling_detection_algorithm::dribbling_detection::dribble_detector::DribbleDetector;
-use dribbling_detection_algorithm::dribbling_detection::dribble_models::{Ball, DribbleFrame};
+use dribbling_detection_algorithm::dribbling_detection::dribble_detector::{self, DribbleDetector};
+use dribbling_detection_algorithm::dribbling_detection::dribble_models::{
+    Ball, DribbleEvent, DribbleFrame,
+};
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
 use dribbling_detection_algorithm::utils::keyboard_input::{
     wait_for_keyboard_input, KeyboardInput,
@@ -16,6 +18,7 @@ use opencv::imgcodecs;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use tokio::io;
 use tokio::runtime::Runtime;
 
 fn main() {
@@ -51,18 +54,28 @@ fn main() {
     let data_iter = dataset.iter_subset(&"interpolated-predictions");
     let inner_rad = config.dribbling_detection.inner_radius;
     let outer_rad = config.dribbling_detection.outer_radius;
-
-    let mut dribble_detector = DribbleDetector::new(
+    let dribble_detector = DribbleDetector::new(
         inner_rad,
         outer_rad,
         config.dribbling_detection.inner_threshold,
         config.dribbling_detection.outer_threshold,
+        config.dribbling_detection.outer_in_threshold,
+        config.dribbling_detection.outer_out_threshold,
     );
+    process_videos(data_iter, config.clone(), video_mode, dribble_detector);
+}
+
+fn process_videos(
+    data_iter: impl Iterator<Item = io::Result<VideoData>>,
+    config: Config,
+    video_mode: &String,
+    mut dribble_detector: DribbleDetector,
+) {
+    let mut all_detected_events: HashMap<String, Vec<DribbleEvent>> = HashMap::new();
 
     // Iterate over videos
     for (vid_num, video_data) in data_iter.enumerate() {
         let video_data = video_data.unwrap();
-        // let image_dir = video_data.labels.info.im_dir.clone();
         let image_map: HashMap<String, String> = video_data
             .labels
             .images
@@ -84,6 +97,8 @@ fn main() {
             VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
                 .expect("Failed to create visualization builder");
 
+        let mut detected_events: Vec<DribbleEvent> = Vec::new();
+
         for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate() {
             let image_file_name = image_path
                 .to_string_lossy()
@@ -97,25 +112,6 @@ fn main() {
             let mut frame =
                 imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
-            if let Err(err) = std::fs::metadata(&image_path) {
-                eprintln!(
-                    "File '{:?}' does not exist or cannot be accessed: {}",
-                    image_path, err
-                );
-            } else {
-                // proceed to read
-                let frame =
-                    imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR)
-                        .expect(format!("Failed to read image '{:?}'", image_path).as_str());
-
-                if frame.empty() {
-                    eprintln!(
-                        "OpenCV could not decode the image, returning an empty matrix. Path: {:?}",
-                        image_path.to_str().unwrap()
-                    );
-                }
-            }
-
             let filtered_annotations = filter_annotations(
                 image_id,
                 annotations.clone(),
@@ -123,7 +119,6 @@ fn main() {
                 config.dribbling_detection.ignore_person_classes,
                 config.dribbling_detection.ignore_teams,
             );
-
             let ball_model = get_ball_model(&category_map, &filtered_annotations);
             let player_models = get_player_models(&category_map, &filtered_annotations);
 
@@ -131,37 +126,24 @@ fn main() {
                 println!("(In main): No players found in frame. Skipping frame...");
                 continue;
             }
-
-            // if ball_model.is_none() {
-            //     println!("(In main): No ball  found in frame. Skipping frame...");
-            //     continue;
-            // }
+            // If no ball is found, you might decide to skip or keep going:
+            // if ball_model.is_none() { ... }
 
             let dribble_frame = DribbleFrame {
                 frame_number: frame_num as u32,
                 players: player_models.unwrap(),
                 ball: ball_model.unwrap_or(Ball { x: 0.0, y: 0.0 }),
             };
-            let dribble_event = dribble_detector.process_frame(dribble_frame);
 
-            if dribble_event.is_some() && dribble_event.as_ref().unwrap().detected_dribble {
-                println!(
-                    " * Dribble event detected: {:?}",
-                    dribble_event.as_ref().unwrap().frames
-                );
-            } else if dribble_event.is_some() && dribble_event.as_ref().unwrap().detected_tackle {
-                println!(
-                    " * Tackle event detected: {:?}",
-                    dribble_event.as_ref().unwrap().frames
-                );
+            // The detector may return an event that just *finished* on this frame
+            let maybe_event = dribble_detector.process_frame(dribble_frame);
+
+            if let Some(dribble_event) = maybe_event.clone() {
+                if dribble_event.detected_dribble || dribble_event.detected_tackle {
+                    println!("Detected dribble event: {:?}", dribble_event.frames);
+                    detected_events.push(dribble_event);
+                }
             }
-            // else if dribble_event.is_some() && dribble_event.as_ref().unwrap().ever_contested {
-            //     println!(" * Contested dribble event detected.");
-            // } else if dribble_event.is_some() {
-            //     println!(" * Uncontested dribble event detected.");
-            // } else {
-            //     println!(" * No dribble event detected.");
-            // }
 
             visualization_builder
                 .add_frame(
@@ -169,7 +151,7 @@ fn main() {
                     Some(image_id),
                     Some(&filtered_annotations),
                     &category_map,
-                    dribble_event,
+                    maybe_event,
                 )
                 .expect("Failed to add frame");
 
@@ -195,8 +177,58 @@ fn main() {
             }
         }
 
+        all_detected_events.insert(file_name.clone(), detected_events.clone());
+
+        // After processing all frames of the video, merge consecutive dribble events
+        let merged_events = combine_consecutive_events(detected_events);
+
         visualization_builder
             .finish()
             .expect("Failed to finish visualization");
+
+        if config.general.log_level == "debug" && !merged_events.is_empty() {
+            println!("\n\nDetected dribble events for video {}:", file_name);
+            for ev in merged_events {
+                // You can customize printing logic (tackle vs dribble, etc.)
+                if ev.detected_tackle {
+                    println!(" * Tackle event detected: {:?}", ev.frames);
+                } else {
+                    println!(" * Dribble event detected: {:?}", ev.frames);
+                }
+            }
+        }
     }
+}
+
+/// Merges consecutive dribble events if the start of one event
+/// is immediately after (or the same as) the end of the previous event.
+fn combine_consecutive_events(mut events: Vec<DribbleEvent>) -> Vec<DribbleEvent> {
+    events.sort_by_key(|e| e.start_frame);
+
+    let mut merged: Vec<DribbleEvent> = Vec::new();
+    for event in events {
+        if let Some(last) = merged.last_mut() {
+            if let Some(last_end) = last.end_frame {
+
+                let same_type = (last.detected_tackle && event.detected_tackle)
+                    || (last.detected_dribble && event.detected_dribble);
+
+                if (event.start_frame <= last_end + 1) && same_type {
+                    last.extend(&event);
+
+                    if let Some(end) = event.end_frame {
+                        last.end_frame = Some(end);
+                    }
+                    // If the new event is a tackle or a contested dribble, keep that info
+                    last.detected_tackle |= event.detected_tackle;
+                    last.detected_dribble |= event.detected_dribble;
+                    last.ever_contested |= event.ever_contested;
+                    continue;
+                }
+            }
+        }
+        // If not mergeable, push as a new event
+        merged.push(event);
+    }
+    merged
 }

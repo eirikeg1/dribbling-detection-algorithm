@@ -26,7 +26,7 @@ pub struct DribbleFrame {
 pub struct DribbleEvent {
     pub finished: bool,
     pub detected_dribble: bool,
-    pub detected_tackle: bool, // <-- New field for tackle classification.
+    pub detected_tackle: bool, // <-- Existing field for tackle classification.
     pub ever_contested: bool,
     pub possession_holder: u32,
     pub start_frame: u32,
@@ -34,6 +34,7 @@ pub struct DribbleEvent {
     pub frames: Vec<u32>,
     pub active_defenders: Vec<u32>,
     pub inner_defenders: Vec<u32>,
+    pub ball_between_occurred: bool,
 }
 
 impl DribbleEvent {
@@ -41,7 +42,7 @@ impl DribbleEvent {
         DribbleEvent {
             finished: false,
             detected_dribble: false,
-            detected_tackle: false, // <-- Initialize new field.
+            detected_tackle: false,
             ever_contested: false,
             possession_holder,
             start_frame,
@@ -49,10 +50,24 @@ impl DribbleEvent {
             frames: vec![start_frame],
             active_defenders: Vec::new(),
             inner_defenders: Vec::new(),
+
+            // Initialize new field to false
+            ball_between_occurred: false,
         }
     }
 
     pub fn add_frame(&mut self, frame: u32) {
         self.frames.push(frame);
+    }
+
+    /// Extends the defenders and frames with the values of another dribble event.
+    pub fn extend(&mut self, other: &DribbleEvent) {
+        self.frames.extend(&other.frames);
+        self.active_defenders.extend(&other.active_defenders);
+        self.inner_defenders.extend(&other.inner_defenders);
+        // If the other event had the ball_between_occurred flag set, carry it over.
+        if other.ball_between_occurred {
+            self.ball_between_occurred = true;
+        }
     }
 }
