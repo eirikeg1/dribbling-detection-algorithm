@@ -35,7 +35,7 @@ impl Dataset {
     // Load data for a specific subset in alphabetical order
     pub fn load_subset(&self, subset: &str) -> io::Result<()> {
         let subset_dir = self.base_dir.join(subset);
-        if !subset_dir.exists() {
+        if !self.base_dir.exists() && !subset_dir.exists() {
             eprintln!("Directory {:?} does not exist.", subset_dir);
             return Ok(());
         }
