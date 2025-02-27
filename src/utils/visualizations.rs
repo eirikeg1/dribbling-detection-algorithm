@@ -47,13 +47,6 @@ impl<'a> VisualizationBuilder<'a> {
         })
     }
 
-    /// Add **one** frame
-    ///
-    /// - If `writer` is not initialized yet, it will initialize based on the
-    ///   current frame’s dimensions.
-    /// - Scales the frame and draws annotations based on config.
-    /// - Then it either writes the frame (`download` mode) or displays it
-    ///   (`visualization` mode).
     pub fn add_frame(
         &mut self,
         frame: &mut Mat,
@@ -73,20 +66,19 @@ impl<'a> VisualizationBuilder<'a> {
             draw_annotations(frame, ann, categories, dribble_event, &id, self.config)?;
         }
 
-        if self.writer.is_none() {
-            self.writer = Some(
-                initialize_writer(&self.output_path, frame).expect("failed to initialize writer"),
-            );
-        }
-
-        if self.mode == "download" {
-            if let Some(ref mut writer) = self.writer {
-                writer.write(frame).expect("failed to write to video");
-            } else {
-                eprintln!("VideoWriter is not initialized—cannot write frame.");
+        match self.mode {
+            "download" => {
+                if self.writer.is_none() {
+                    self.writer = Some(initialize_writer(&self.output_path, frame)?);
+                }
+                if let Some(ref mut writer) = self.writer {
+                    writer.write(frame)?;
+                }
+            },
+            _ => {
+                // Show frame, but do not initialize the writer at all
+                highgui::imshow("Image Sequence Visualization", frame)?;
             }
-        } else {
-            highgui::imshow("Image Sequence Visualization", frame).expect("failed to show frame");
         }
 
         self.frame_count += 1;
@@ -94,17 +86,13 @@ impl<'a> VisualizationBuilder<'a> {
     }
 
     pub fn finish(&mut self) -> opencv::Result<()> {
-        if let Some(ref mut writer) = self.writer {
-            writer.release().expect("failed to release writer");
-            // eprintln!(
-            //     "Saved {} frames to '{}'.",
-            //     self.frame_count,
-            //     self.output_path.display(),
-            // );
+        if self.mode == "download" {
+            if let Some(ref mut writer) = self.writer {
+                writer.release()?;
+            }
         } else {
-            eprintln!("No VideoWriter was created. Nothing to finalize.");
+            eprintln!("No video writer was used for mode: {}", self.mode);
         }
-
         Ok(())
     }
 }
