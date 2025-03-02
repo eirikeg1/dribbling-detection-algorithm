@@ -1,5 +1,7 @@
 use std::f64;
 
+use serde::Serialize;
+
 #[derive(Debug, Clone)]
 pub struct Player {
     pub id: u32,
@@ -22,11 +24,12 @@ pub struct DribbleFrame {
     pub ball: Ball,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct DribbleEvent {
+    pub file_name: String,
     pub finished: bool,
     pub detected_dribble: bool,
-    pub detected_tackle: bool, // <-- Existing field for tackle classification.
+    pub detected_tackle: bool,
     pub ever_contested: bool,
     pub possession_holder: u32,
     pub start_frame: u32,
@@ -38,8 +41,9 @@ pub struct DribbleEvent {
 }
 
 impl DribbleEvent {
-    pub fn new(possession_holder: u32, start_frame: u32) -> Self {
+    pub fn new(possession_holder: u32, start_frame: u32, file_name: String) -> Self {
         DribbleEvent {
+            file_name,
             finished: false,
             detected_dribble: false,
             detected_tackle: false,

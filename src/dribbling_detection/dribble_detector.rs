@@ -5,19 +5,20 @@ use super::dribble_models::{DribbleEvent, DribbleFrame, Player};
 /// Detects dribble events. An event is started when a defender enters the outer radius,
 /// becomes contested if a defender is inside the inner radius for at least `inner_threshold` frames,
 /// and is only considered valid if it lasts at least `outer_threshold` frames.
+#[derive(Clone)]
 pub struct DribbleDetector {
+    pub video_name: String,
     pub outer_rad: f64,
     pub inner_rad: f64,
     pub inner_threshold: u32,
     pub outer_threshold: u32,
-    
     /// Minimum consecutive frames with at least 1 defender in the outer zone
     pub outer_in_threshold: u32,
     /// Minimum consecutive frames with 0 defenders in the outer zone
     /// before we treat the outer zone as truly "inactive."
     pub outer_out_threshold: u32,
 
-    /// Tracks whether the outer zone is currently considered active 
+    /// Tracks whether the outer zone is currently considered active
     outer_zone_active: bool,
     /// Consecutive frames counters for outer zone hysteresis logic.
     consecutive_outer_in: u32,
@@ -40,6 +41,7 @@ impl DribbleDetector {
     /// - `outer_in_threshold` is the consecutive frame count needed to set the outer zone active.
     /// - `outer_out_threshold` is the consecutive frame count needed to set the outer zone inactive.
     pub fn new(
+        video_name: String,
         inner_rad: f64,
         outer_rad: f64,
         inner_threshold: u32,
@@ -48,6 +50,7 @@ impl DribbleDetector {
         outer_out_threshold: u32,
     ) -> Self {
         Self {
+            video_name,
             inner_rad,
             outer_rad,
             inner_threshold,
@@ -125,7 +128,6 @@ impl DribbleDetector {
 
     /// Check whether we have defenders inside the outer zone for the current frame.
     fn defenders_in_outer_zone(&self, frame: &DribbleFrame) -> bool {
-        
         if let Some(holder) = frame
             .players
             .iter()
@@ -167,7 +169,6 @@ impl DribbleDetector {
     /// - There's a ball holder (distance to ball < inner_rad),
     /// - The outer zone is active (which we handle via hysteresis above).
     fn try_start_event(&mut self, frame: &DribbleFrame) -> Option<DribbleEvent> {
-        
         if let Some(holder) = frame
             .players
             .iter()
@@ -175,9 +176,10 @@ impl DribbleDetector {
         {
             let (defenders, inner_defenders) =
                 Self::calc_defenders(&frame.players, holder, self.outer_rad, self.inner_rad);
-            
+
             if !defenders.is_empty() {
-                let mut event = DribbleEvent::new(holder.id, frame.frame_number);
+                let mut event =
+                    DribbleEvent::new(holder.id, frame.frame_number, self.video_name.clone());
                 event.active_defenders = defenders;
                 event.inner_defenders = inner_defenders.clone();
                 self.active_event = Some(event.clone());
@@ -270,7 +272,8 @@ impl DribbleDetector {
             event.active_defenders = defenders;
 
             // If defenders have been in the inner zone enough frames, mark it contested.
-            if !event.inner_defenders.is_empty() && self.active_inner_frames >= self.inner_threshold {
+            if !event.inner_defenders.is_empty() && self.active_inner_frames >= self.inner_threshold
+            {
                 event.ever_contested = true;
             }
 

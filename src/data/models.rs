@@ -2,6 +2,57 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use serde::Serialize;
+
+use crate::dribbling_detection::dribble_models::DribbleEvent;
+
+// This struct holds some metadata similar to your input's "info" field.
+#[derive(Serialize)]
+pub struct ExportInfo {
+    pub version: String,
+    pub generated_at: String,
+}
+
+#[derive(Serialize)]
+pub struct DribbleLabel {
+    pub finished: bool,
+    pub detected_dribble: bool,
+    pub detected_tackle: bool,
+    pub ever_contested: bool,
+    pub possession_holder: u32,
+    pub start_frame: u32,
+    pub end_frame: Option<u32>,
+}
+
+impl From<&DribbleEvent> for DribbleLabel {
+    fn from(event: &DribbleEvent) -> Self {
+        DribbleLabel {
+            finished: event.finished,
+            detected_dribble: event.detected_dribble,
+            detected_tackle: event.detected_tackle,
+            ever_contested: event.ever_contested,
+            possession_holder: event.possession_holder,
+            start_frame: event.start_frame,
+            end_frame: event.end_frame,
+        }
+    }
+}
+
+// Each video’s dribble events are stored here.
+#[derive(Serialize)]
+pub struct VideoDribbleEvents {
+    pub video_id: String,
+    pub file_name: String,
+    pub dribble_events: Vec<DribbleLabel>,
+}
+
+// This is the top-level export pub.
+#[derive(Serialize)]
+pub struct DribbleEventsExport {
+    pub info: ExportInfo,
+    pub videos: Vec<VideoDribbleEvents>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub enum SpecialHighlight {
     PossesionHolder,

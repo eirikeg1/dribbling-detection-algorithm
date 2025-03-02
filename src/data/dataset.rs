@@ -20,11 +20,6 @@ impl Dataset {
         let subsets = config.data.subsets.clone();
         let num_cores = config.general.num_cores as usize;
 
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(num_cores)
-            .build_global()
-            .unwrap();
-
         Self {
             base_dir,
             subsets,

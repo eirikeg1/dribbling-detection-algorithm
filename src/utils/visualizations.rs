@@ -34,10 +34,10 @@ impl<'a> VisualizationBuilder<'a> {
 
         let output_path = output_dir_path.join(format!("{}.avi", file_name));
 
-        println!(
-            "\nCreating visualization for {file_name}, Output path: {}",
-            output_path.display()
-        );
+        // println!(
+        //     "\nCreating visualization for {file_name}, Output path: {}",
+        //     output_path.display()
+        // );
         Ok(Self {
             mode,
             output_path: output_path.to_path_buf(),
@@ -74,7 +74,7 @@ impl<'a> VisualizationBuilder<'a> {
                 if let Some(ref mut writer) = self.writer {
                     writer.write(frame)?;
                 }
-            },
+            }
             _ => {
                 // Show frame, but do not initialize the writer at all
                 highgui::imshow("Image Sequence Visualization", frame)?;
