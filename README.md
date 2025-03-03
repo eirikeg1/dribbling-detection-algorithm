@@ -67,7 +67,9 @@ cargo run
 
 # Algorithm Description
 
-This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a dribble. It is based on the players 2d coordinate on the field (after a homographic transform)
+This algorithm is designed to quickly identify clips that are more likely to contain dribbling actions from the 2025 SoccerNet Game-State Recognition Challenge dataset. It is not intended to be fully accurate but aims to facilitate efficient dataset creation, by outputting a large set of possible clips which quite likely might contain a dribble. It is based on the players 2d coordinate on the field (after a homographic transform).
+
+It is a state space machine algorithm which does a single pass through the video.
 
 ---
 

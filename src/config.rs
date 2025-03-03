@@ -1,3 +1,5 @@
+use std::env;
+
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -49,4 +51,24 @@ pub struct Config {
     pub data: DataConfig,
     pub dribbling_detection: DribblingDetectionConfig,
     pub visualization: VisualizationConfig,
+}
+
+impl Config {
+    /// Applies overrides from environment variables, if set.
+    ///
+    /// - `DATA_PATH`: overrides `data.data_path`
+    /// - `OUTPUT_PATH`: overrides `data.output_path`
+    ///
+    pub fn apply_env_overrides(mut self) -> Self {
+        println!("applying existing env overrides");
+        if let Ok(dp) = env::var("DATA_PATH") {
+            println!("Overriding data path: {}", dp);
+            self.data.data_path = dp;
+        }
+        if let Ok(op) = env::var("OUTPUT_PATH") {
+            println!("Overriding output path: {}", op);
+            self.data.output_path = op;
+        }
+        self
+    }
 }

@@ -45,10 +45,11 @@ fn main() {
         println!("Data download complete.");
     }
 
-    println!("Continuing with regular execution...");
+    println!("\nRunning dribbling detection");
 
     let config_content = fs::read_to_string("config.toml").expect("Unable to read the config file");
     let config: Config = toml::from_str(&config_content).expect("Unable to parse the config file");
+    let config = config.apply_env_overrides();
 
     println!("{:#?}", config);
 
@@ -69,6 +70,8 @@ fn main() {
     let data_iter: Vec<_> = dataset.iter_subset(&"interpolated-predictions").collect();
     let inner_rad = config.dribbling_detection.inner_radius;
     let outer_rad = config.dribbling_detection.outer_radius;
+
+    println!("Number of videos to process: {}", data_iter.len());
 
     // Shared map of all detected events
     let all_detected_events = Arc::new(Mutex::new(HashMap::new()));

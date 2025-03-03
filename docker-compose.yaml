@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  dribbling:
+    build: .
+    volumes:
+      - .:/app
+      - ${DATA_PATH}:/data/input
+      - ${OUTPUT_PATH}:/data/output
+    environment:
+      - DATA_PATH=/data/input
+      - OUTPUT_PATH=/data/output
+      - OPENCV_DIR=/app/opencv_install
+      - LD_LIBRARY_PATH=/app/opencv_install/lib:$LD_LIBRARY_PATH

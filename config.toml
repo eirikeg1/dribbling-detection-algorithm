@@ -27,11 +27,11 @@ x_max = 52.0
 y_min = -34.0
 y_max = 34.0
 
-[data]
+[data] # If using Docker: append  './' to the start of your paths
 # data_path = "/home/eirik/Projects/data/SoccerNetGS" # TODO: Implement "test" for test data path
 # data_path = "/home/eirik/Projects/data/dribbling-clips/outputs/run_2025-02-26_23-51-01"
 data_path = "/home/eirik/Projects/data/dribbling-clips/outputs/run_2025-02-25_01-15-08"
 # subsets = ["train", "valid", "test", "challenge"]
 subsets = ["interpolated-predictions"]
-output_path = "data/output"
+output_path = "/home/eirik/Projects/dribbling-detection-algorithm/data/output"
 huggingface_dataset_url = "https://datasets-server.huggingface.co/first-rows?dataset=SoccerNet%2FSN-GSR-2025&config=default"
