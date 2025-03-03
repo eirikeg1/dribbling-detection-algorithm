@@ -1,5 +1,4 @@
 use crate::data::models::{Annotation, Attribute};
-use opencv::core::Scalar;
 use rand::RngCore;
 use std::collections::HashMap;
 
@@ -59,21 +58,6 @@ pub fn filter_annotations(
             })
         })
         .collect()
-}
-
-pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String, u32>) -> Scalar {
-    let team_id = &annotation.attributes.as_ref().unwrap().team;
-
-    if annotation.category_id == categories["ball"] {
-        return Scalar::new(237.0, 237.0, 237.0, 255.0); // Gray for ball
-    }
-
-    // Determine color based on team_id
-    match team_id.as_deref() {
-        Some("left") => Scalar::new(0.0, 0.0, 255.0, 255.0), // Red for team A
-        Some("right") => Scalar::new(255.0, 0.0, 0.0, 255.0), // Blue for team B
-        _ => Scalar::new(0.0, 255.0, 0.0, 255.0),            // Default: Green
-    }
 }
 
 /// Finds the closest annotation to the base annotation

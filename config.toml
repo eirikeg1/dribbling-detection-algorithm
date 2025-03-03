@@ -1,7 +1,7 @@
 [general]
 num_cores = 10  # Number of CPU cores to be used. Is set to 1 if video mode is "display"
 log_level = "debug"  # Possible values: "debug", "info", "warn", "error"
-video_mode = "download" # Possible values: "download", "display" or "none" (If using SSH display might be slow)
+video_mode = "none" # Video modes are not available for no-opencv build. Change to main branch
 
 [dribbling_detection]
 outer_threshold = 20 # Minumum number of frames in an event. Mainly to prevent predictions of jumping 2d coords

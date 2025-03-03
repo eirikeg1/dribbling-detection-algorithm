@@ -11,12 +11,7 @@ use dribbling_detection_algorithm::dribbling_detection::dribble_models::{
     Ball, DribbleEvent, DribbleFrame,
 };
 use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
-use dribbling_detection_algorithm::utils::keyboard_input::{
-    wait_for_keyboard_input, KeyboardInput,
-};
-use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, data::dataset::Dataset};
-use opencv::imgcodecs;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::env;
@@ -52,13 +47,7 @@ fn main() {
 
     println!("{:#?}", config);
 
-    let video_mode: &String = &config.general.video_mode;
-    let num_threads: usize = if config.general.video_mode == "display" {
-        println!("Using 1 core since video mode is set to \"display\"");
-        1
-    } else {
-        config.general.num_cores as usize
-    };
+    let num_threads: usize = config.general.num_cores as usize;
 
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
@@ -101,7 +90,6 @@ fn main() {
                     vid_num,
                     video_data,
                     config.clone(),
-                    video_mode,
                     dribble_detector.clone(),
                 );
 
@@ -136,7 +124,6 @@ fn main() {
                     vid_num,
                     video_data,
                     config.clone(),
-                    video_mode,
                     dribble_detector.clone(),
                 );
 
@@ -206,7 +193,6 @@ fn process_video(
     vid_num: usize,
     video_data: VideoData,
     config: Config,
-    video_mode: &String,
     mut dribble_detector: DribbleDetector,
 ) -> (String, Vec<DribbleEvent>) {
     if config.general.log_level == "debug" {
@@ -230,10 +216,6 @@ fn process_video(
     let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
     let file_name = format!("video_{}", vid_num);
 
-    let mut visualization_builder =
-        VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
-            .expect("Failed to create visualization builder");
-
     let mut detected_events: Vec<DribbleEvent> = Vec::new();
 
     for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate() {
@@ -248,9 +230,6 @@ fn process_video(
             .to_string();
 
         let image_id = image_map.get(&image_file_name).unwrap_or(&image_file_name);
-
-        let mut frame =
-            imgcodecs::imread(image_path.to_str().unwrap(), imgcodecs::IMREAD_COLOR).unwrap();
 
         let filtered_annotations = filter_annotations(
             image_id,
@@ -282,47 +261,12 @@ fn process_video(
             }
         }
 
-        visualization_builder
-            .add_frame(
-                &mut frame,
-                Some(image_id),
-                Some(&filtered_annotations),
-                &category_map,
-                maybe_event,
-            )
-            .expect("Failed to add frame");
-
         if config.general.video_mode != "display" {
             continue;
-        }
-
-        let input_value =
-            wait_for_keyboard_input(&config).expect("There was an error with keyboard input");
-
-        match input_value {
-            KeyboardInput::Quit => {
-                EXIT_FLAG.store(true, Ordering::Relaxed);
-                visualization_builder
-                    .finish()
-                    .expect("Failed to finish visualization");
-                break;
-            }
-            KeyboardInput::NextFrame => {}
-            KeyboardInput::PreviousFrame => {}
-            KeyboardInput::NextVideo => {
-                visualization_builder
-                    .finish()
-                    .expect("Failed to finish visualization");
-                break;
-            }
         }
     }
 
     let merged_events = combine_consecutive_events(detected_events);
-
-    visualization_builder
-        .finish()
-        .expect("Failed to finish visualization");
 
     (file_name, merged_events)
 }
