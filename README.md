@@ -2,8 +2,15 @@
 
 A Rust-based implementation for detecting dribbling events on the [SoccerNet Game State Reconstruction 2024](https://www.soccer-net.org/) dataset. The goal behind this tool is not to get the most accurate predictions,but to get a set of good candidates which can be manually approved/rejected later. Therefore this is not indended to be used for classification, but to build a dataset quickly.
 
-
 ![Dribling detection example](images/image-1.png)
+
+## Visualization Controls
+
+When visualizations are enabled and autoplay is disabled, you can manually control playback using the following keyboard commands:
+
+- **Exit Program**: Press `q`
+- **Skip to Next Video**: Press the `space` bar
+- **Advance to Next Frame**: Press any other key
 
 
 ## Dataset
@@ -18,6 +25,41 @@ A Rust-based implementation for detecting dribbling events on the [SoccerNet Gam
 
 ## Configurations
 Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
+
+
+This configuration file is divided into several sections. Here are the most important settings:
+
+### General
+- **num_cores**: Specifies how many CPU cores to use. It defaults to 1 if `video_mode` is set to "display".
+- **log_level**: Sets the verbosity of log output. Options are "debug", "info", "warn", or "error".
+- **video_mode**: Controls how video is handled:
+  - `"download"`: Downloads video data.
+  - `"display"`: Shows video output (may be slow over SSH).
+  - `"none"`: Disables video processing.
+
+### Dribbling Detection
+- **outer_threshold**: Minimum number of frames needed for an event, reducing noise from brief fluctuations.
+- **inner_threshold**: Time spent within a closer range that is not counted toward the outer threshold.
+- **frame_skip**: Number of frames to skip during processing to improve performance.
+- **min_duration**: Minimum action duration (in seconds) to qualify as dribbling.
+- **inner_radius** and **outer_radius**: Define the detection zones (as a percentage of screen space) around the ball.
+- **ignore_person_classes** and **ignore_teams**: Enable filtering to ignore specific person classifications or team-related information.
+
+### Visualization
+- **autoplay**: Toggles whether videos play automatically, or if to use keyboard commands
+- **scale_factor**: Adjusts the size of the video and player bounding boxes (keep at 1 for downloading).
+- **minimap_x**, **minimap_y**, **minimap_width**, **minimap_height**: Set the position and size of the minimap, ensuring a consistent aspect ratio. 
+- **x_min**, **x_max**, **y_min**, **y_max**: Define the coordinate boundaries for visualizing the 2d minimap. If set wrong the points might be drawn either outside or too far inside the minimap.
+
+### Data
+- **data_path**: Path to the input data directory. *(For Docker, prefix paths with `./`.)*
+- **subsets**: Specifies which data subsets to use (e.g., "interpolated-predictions").
+- **output_path**: Directory where processed output will be stored.
+- **huggingface_dataset_url**: URL to fetch a preview of the dataset from Hugging Face.
+
+This setup allows you to adjust system resources, detection sensitivity, and visualization parameters to suit your project needs.
+
+
 
 ## Docker Setup
 
