@@ -15,12 +15,45 @@ A Rust-based implementation for detecting dribbling events on the [SoccerNet Gam
 * Refer to the official [SoccerNet website](https://www.soccer-net.org/) for more information about soccernet and their challenges/datasets
 
 # Setup
-The setup is described for ubuntu based systems
 
 ## Configurations
 Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
 
-## Requirements
+## Docker Setup
+
+If you prefer to run the project inside a Docker container, you can use Docker Compose to encapsulate all dependencies and ensure a consistent environment.
+
+### Overview
+
+- **docker-compose.yaml**: Defines the `dribbling` service, mounting your project directory and mapping data paths.
+- **Dockerfile**: Builds a slim Rust-based image with all required packages and dependencies.
+- **update_env.sh**: Extracts `DATA_PATH` and `OUTPUT_PATH` from `config.toml` and writes them to a `.env` file.
+- **entrypoint.sh**: Updates the environment and starts the dribbling detection algorithm.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed
+- [Docker Compose](https://docs.docker.com/compose/install/) installed
+
+### Setup Instructions
+
+1. **Environment Variables**  
+   Ensure you define the following environment variables:
+   - `DATA_PATH`: Path to the input data directory.
+   - `OUTPUT_PATH`: Path to the output data directory.
+
+   You can either create a `.env` file in the project root or export them in your shell.
+
+2. **Build and Run the Container**  
+   Use Docker Compose to build the image and run the container:
+   ```bash
+   docker-compose up --build
+
+
+## Local Istallation
+The installation steps is described for ubuntu based systems, but the steps are probably similar with different package managers.
+
+### Requirements
 
 - **Rust** (latest stable recommended)
 - **OpenCV** (3.4 or 4.x)  
@@ -28,7 +61,7 @@ Adjust paths, parallelism, and other runtime parameters in ```config.toml```.
 - **OpenSSL**
    Is a dependency of the reqwest library, used for downloading dataset
 
-## Installation
+### Steps
 
 1. **Install Rust**:  
    Follow the official [Rust installation guide](https://www.rust-lang.org/tools/install) to set up Rust and Cargo.

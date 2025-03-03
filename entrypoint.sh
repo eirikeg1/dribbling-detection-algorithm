@@ -12,7 +12,7 @@ cat .env
 mkdir -p /data/output
 
 # Now, run application
-# exec ./target/release/dribbling-detection-algorithm
+exec ./target/release/dribbling-detection-algorithm
 
-# For development
-exec cargo watch -x 'build --release' -x 'run'
+# Optionally, use cargo watch for development instead of above
+# exec cargo watch -x 'build --release' -x 'run'
