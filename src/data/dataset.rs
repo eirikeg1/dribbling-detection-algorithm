@@ -1,17 +1,71 @@
-use super::models::VideoData;
+use super::models::{Annotation, DribbleEventsExport, DribbleLabel, VideoData};
 use crate::config::Config;
 use crate::data::models::Labels;
+use opencv::core::Tuple;
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{self, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
 pub struct Dataset {
     pub base_dir: PathBuf,
     pub subsets: Vec<String>,
     pub num_cores: usize,
+    pub config: Config,
+}
+
+fn parse_frame_number(file_name: &str) -> Option<u32> {
+    // "000123.jpg" => "000123" => parse u32 => 123
+    let trimmed = file_name.trim_end_matches(".jpg");
+    trimmed.parse::<u32>().ok()
+}
+
+/// Helper to load dribble-events map if in review mode.
+/// Returns a HashMap<video_id, HashSet<frame_nums_in_events>> or None if not in review mode.
+pub fn load_dribble_events_map(config: &Config) -> Option<HashMap<String, Vec<(u32,u32)>>> {
+    let review_mode = config.general.review_mode.unwrap_or(false);
+    if !review_mode {
+        return None;
+    }
+
+    // Attempt to read dribble_events.json
+    let dribble_events_path = &config.data.dribble_events_path;
+    let dribble_json = match fs::read_to_string(dribble_events_path) {
+        Ok(txt) => txt,
+        Err(e) => {
+            eprintln!("Could not read dribble events file: {e}");
+            return None;
+        }
+    };
+
+    // Attempt to parse JSON
+    let dribble_events: DribbleEventsExport = match serde_json::from_str(&dribble_json) {
+        Ok(obj) => obj,
+        Err(e) => {
+            eprintln!("Could not parse dribble_events.json: {e}");
+            return None;
+        }
+    };
+
+    // Build our video->frames map
+    let mut video_to_valid_frames = HashMap::new();
+    for video_entry in &dribble_events.videos {
+        // If no dribble events, the resulting set is empty
+
+        // Insert all event frames
+        for event in &video_entry.dribble_events {
+            if !video_to_valid_frames.contains_key(&video_entry.video_id) {
+                video_to_valid_frames.insert(video_entry.video_id.clone(), vec![]);
+            }
+            let start = event.start_frame;
+            let end = event.end_frame.unwrap_or(start);
+            video_to_valid_frames.get_mut(&video_entry.video_id).unwrap().push((start, end));
+        }
+    }
+
+    Some(video_to_valid_frames)
 }
 
 impl Dataset {
@@ -24,94 +78,21 @@ impl Dataset {
             base_dir,
             subsets,
             num_cores,
+            config,
         }
-    }
-
-    // Load data for a specific subset in alphabetical order
-    pub fn load_subset(&self, subset: &str) -> io::Result<()> {
-        let subset_dir = self.base_dir.join(subset);
-        if !self.base_dir.exists() && !subset_dir.exists() {
-            eprintln!("Directory {:?} does not exist.", subset_dir);
-            return Ok(());
-        }
-
-        println!("Loading subset: '{}'", subset);
-
-        // Collect directory entries.
-        let mut entries: Vec<_> = fs::read_dir(&subset_dir)?
-            .filter_map(|entry| entry.ok())
-            .collect();
-
-        // Sort entries alphabetically by path.
-        entries.sort_by(|a, b| a.path().cmp(&b.path()));
-
-        // Iterate (optionally in parallel).
-        entries.into_par_iter().for_each(|entry| {
-            let seq_dir = entry.path();
-            if !seq_dir.is_dir() {
-                return;
-            }
-
-            let labels_file = seq_dir.join("Labels-GameState.json");
-            if !labels_file.exists() {
-                eprintln!(
-                    "No labels file found for sequence {:?} in subset {}",
-                    seq_dir, subset
-                );
-                return;
-            }
-
-            if let Ok(file) = File::open(&labels_file) {
-                let reader = BufReader::new(file);
-                if let Ok(labels) = serde_json::from_reader::<_, Labels>(reader) {
-                    // Map image ID to file name
-                    let image_id_to_file: HashMap<String, String> = labels
-                        .images
-                        .into_par_iter()
-                        .map(|image| (image.image_id, image.file_name))
-                        .collect();
-
-                    // Process each annotation
-                    labels.annotations.par_iter().for_each(|ann| {
-                        let file_name = image_id_to_file
-                            .get(&ann.image_id)
-                            .cloned()
-                            .unwrap_or_else(|| "Unknown".to_string());
-                        println!(
-                            "Image ID: {}, File Name: {}, Category ID: {}",
-                            ann.image_id, file_name, ann.category_id
-                        );
-                        println!(" * attr: {:?}\n", ann.attributes);
-                    });
-                }
-            }
-        });
-
-        Ok(())
-    }
-
-    // Load all subsets
-    pub fn load_all(&self) -> io::Result<()> {
-        println!("Loading all subsets");
-
-        self.subsets.par_iter().for_each(|subset| {
-            if let Err(err) = self.load_subset(subset) {
-                eprintln!("Error loading subset {}: {}", subset, err);
-            }
-        });
-
-        println!("Successfully loaded all subsets");
-        Ok(())
     }
 
     // Create an iterator for a specific subset, ordered alphabetically
+     /// Create an iterator for a specific subset, ordered alphabetically.
+    /// This version filters out videos that have no dribble events
+    /// and filters out any frames not in the dribble-event ranges.
     pub fn iter_subset(&self, subset: &str) -> impl Iterator<Item = io::Result<VideoData>> {
         let subset_dir = self.base_dir.join(subset);
         if !subset_dir.exists() {
             return Box::new(std::iter::empty()) as Box<dyn Iterator<Item = io::Result<VideoData>>>;
         }
 
-        // Read and collect entries
+        // Read and collect entries (directories) under this subset
         let mut entries = match fs::read_dir(&subset_dir) {
             Ok(dir_entries) => dir_entries.filter_map(|e| e.ok()).collect::<Vec<_>>(),
             Err(err) => {
@@ -130,15 +111,22 @@ impl Dataset {
                 return None;
             }
 
+            // The directory name is assumed to be "video_id" (e.g. "video_81")
+            let video_id = match seq_dir.file_name() {
+                Some(name) => name.to_string_lossy().to_string(),
+                None => return None,
+            };
+
             let labels_file = seq_dir.join("Labels-GameState.json");
             if !labels_file.exists() {
                 println!("No labels file found for sequence {:?}", seq_dir);
                 return None;
             }
 
+            // Parse the Labels JSON
             let file = File::open(&labels_file).ok()?;
             let reader = BufReader::new(file);
-            let labels: Labels = match serde_json::from_reader(reader) {
+            let mut labels: Labels = match serde_json::from_reader(reader) {
                 Ok(labels) => labels,
                 Err(err) => {
                     eprintln!("Failed to deserialize JSON file {:?}: {}", labels_file, err);
@@ -153,6 +141,7 @@ impl Dataset {
                 .map(|image| seq_dir.join(&image_dir).join(&image.file_name))
                 .collect();
 
+            // Return our VideoData
             Some(Ok(VideoData {
                 dir_path: seq_dir,
                 image_paths,
