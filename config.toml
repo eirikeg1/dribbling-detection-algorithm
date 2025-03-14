@@ -1,19 +1,21 @@
 [general]
+review_mode = true # Allows user to download the data as structured annotated data
 num_cores = 10  # Number of CPU cores to be used. Is set to 1 if video mode is "display"
 log_level = "debug"  # Possible values: "debug", "info", "warn", "error"
-video_mode = "download" # Possible values: "download", "display" or "none" (If using SSH display might be slow)
+video_mode = "display" # Possible values: "download", "display" or "none" (If using SSH display might be slow)
 
 [dribbling_detection]
+use_2d = true # Whether to use homographically transformed 2d coordinates or image bounding boxes
 outer_threshold = 20 # Minumum number of frames in an event. Mainly to prevent predictions of jumping 2d coords
 inner_threshold = 15 # The time a player is within the inner threshold does not count to outer
 frame_skip = 5
-min_duration = 1.5  # Minimum duration for an action to be classified as dribbling
-inner_radius = 2.1 # Percent of screen from ball
-outer_radius = 3.2
+min_duration = 1.6  # Minimum duration for an action to be classified as dribbling
+inner_radius = 2.0 # Percent of screen from ball
+outer_radius = 3.1
 outer_in_threshold = 5
 outer_out_threshold = 5
 ignore_person_classes = true
-ignore_teams = true
+ignore_teams = false
 
 [visualization]
 autoplay = false
@@ -30,8 +32,9 @@ y_max = 34.0
 [data] # If using Docker: append  './' to the start of your paths
 # data_path = "/home/eirik/Projects/data/SoccerNetGS" # TODO: Implement "test" for test data path
 # data_path = "/home/eirik/Projects/data/dribbling-clips/outputs/run_2025-02-26_23-51-01"
-data_path = "/home/eirik/Projects/data/dribbling-clips/outputs/run_2025-02-25_01-15-08"
+data_path = "/home/eirik/Projects/data/dribbling-detection-algorithm/run_2025-03-03_00-46-55_final_milan_4_2_juve"
 # subsets = ["train", "valid", "test", "challenge"]
 subsets = ["interpolated-predictions"]
+dribble_events_path = "/home/eirik/Projects/dribbling-detection-algorithm/data/output/dribble_events.json"
 output_path = "/home/eirik/Projects/dribbling-detection-algorithm/data/output"
 huggingface_dataset_url = "https://datasets-server.huggingface.co/first-rows?dataset=SoccerNet%2FSN-GSR-2025&config=default"

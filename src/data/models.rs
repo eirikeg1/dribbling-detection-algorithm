@@ -1,19 +1,16 @@
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use crate::dribbling_detection::dribble_models::DribbleEvent;
 
-// This struct holds some metadata similar to your input's "info" field.
-#[derive(Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExportInfo {
     pub version: String,
     pub generated_at: String,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DribbleLabel {
     pub finished: bool,
     pub detected_dribble: bool,
@@ -39,7 +36,7 @@ impl From<&DribbleEvent> for DribbleLabel {
 }
 
 // Each video’s dribble events are stored here.
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct VideoDribbleEvents {
     pub video_id: String,
     pub file_name: String,
@@ -47,7 +44,7 @@ pub struct VideoDribbleEvents {
 }
 
 // This is the top-level export pub.
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DribbleEventsExport {
     pub info: ExportInfo,
     pub videos: Vec<VideoDribbleEvents>,
