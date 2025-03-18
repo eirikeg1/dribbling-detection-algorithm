@@ -1,4 +1,5 @@
 use chrono::Utc;
+use dribbling_detection_algorithm::data::dataset::load_dribble_events_map;
 use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::data::models::{
     Annotation, DribbleEventsExport, ExportInfo, VideoData, VideoDribbleEvents,
@@ -76,86 +77,88 @@ fn main() {
     // Shared map of all detected events
     let all_detected_events = Arc::new(Mutex::new(HashMap::new()));
 
-    if num_threads > 1 {
-        data_iter
-            .par_iter()
-            .enumerate()
-            .for_each(|(vid_num, video_data)| {
-                let video_name = format!("{:06}.jpg", vid_num);
-                let dribble_detector = DribbleDetector::new(
-                    video_name,
-                    inner_rad,
-                    outer_rad,
-                    config.dribbling_detection.inner_threshold,
-                    config.dribbling_detection.outer_threshold,
-                    config.dribbling_detection.outer_in_threshold,
-                    config.dribbling_detection.outer_out_threshold,
-                );
-                if EXIT_FLAG.load(Ordering::Relaxed) {
-                    return;
-                }
-                let video_data = match video_data {
-                    Ok(vd) => vd.clone(),
-                    Err(_) => return,
-                };
-
-                // Each thread processes its video fully, collecting events
-                let (file_name, merged_events) = process_video(
-                    vid_num,
-                    video_data,
-                    config.clone(),
-                    video_mode,
-                    dribble_detector.clone(),
-                );
-
-                // Then each thread adds its entire collection at once
-                let mut all_events = all_detected_events.lock().unwrap();
-                all_events.insert(file_name, merged_events);
-            });
+    let dribble_events_map = if config.general.review_mode.unwrap_or(false) {
+        load_dribble_events_map(&config)
     } else {
-        data_iter
-            .iter()
-            .enumerate()
-            .for_each(|(vid_num, video_data)| {
-                let video_name = format!("{:06}.jpg", vid_num);
-                let dribble_detector = DribbleDetector::new(
-                    video_name,
-                    inner_rad,
-                    outer_rad,
-                    config.dribbling_detection.inner_threshold,
-                    config.dribbling_detection.outer_threshold,
-                    config.dribbling_detection.outer_in_threshold,
-                    config.dribbling_detection.outer_out_threshold,
-                );
-                if EXIT_FLAG.load(Ordering::Relaxed) {
-                    return;
-                }
-                let video_data = match video_data {
-                    Ok(vd) => vd.clone(),
-                    Err(_) => return,
-                };
+        None
+    };
 
-                let (file_name, merged_events) = process_video(
-                    vid_num,
-                    video_data,
-                    config.clone(),
-                    video_mode,
-                    dribble_detector.clone(),
-                );
+    // ---------------------------------------------------------------------------------------------
+    // Define the per-video processing as a closure to avoid duplication
+    // ---------------------------------------------------------------------------------------------
+    let process_item = |(vid_num, video_data): (usize, &Result<VideoData, _>)| {
+        // Build a DribbleDetector for this video
+        let video_name = format!("{:06}.jpg", vid_num);
+        let dribble_detector = DribbleDetector::new(
+            video_name.clone(),
+            inner_rad,
+            outer_rad,
+            config.dribbling_detection.inner_threshold,
+            config.dribbling_detection.outer_threshold,
+            config.dribbling_detection.outer_in_threshold,
+            config.dribbling_detection.outer_out_threshold,
+        );
 
-                let mut all_events = all_detected_events.lock().unwrap();
-                all_events.insert(file_name, merged_events);
-            });
+        // Check for early exit
+        if EXIT_FLAG.load(Ordering::Relaxed) {
+            return;
+        }
+
+        // Skip this video if it can't be unwrapped
+        let video_data = match video_data {
+            Ok(vd) => vd.clone(),
+            Err(_) => return,
+        };
+
+        // Process the video
+        let processed_video = process_video(
+            vid_num,
+            video_name,
+            video_data,
+            config.clone(),
+            video_mode,
+            dribble_detector.clone(),
+            &dribble_events_map,
+        );
+
+        if processed_video.is_some() {
+            let (file_name, merged_events) = processed_video.unwrap();
+            // Then each worker (thread or single) adds all events to the global map
+            let mut all_events = all_detected_events.lock().unwrap();
+            all_events.insert(file_name, merged_events);
+        }
+
+    };
+
+    // -------------------------------
+    // Use parallel or sequential iteration based on num_threads
+    // -------------------------------
+    if num_threads > 1 {
+        data_iter.par_iter().enumerate().for_each(process_item);
+    } else {
+        data_iter.iter().enumerate().for_each(process_item);
     }
 
-    // Once all threads finish, we can safely unwrap the final events
+    if config.general.review_mode.unwrap_or(false) {
+        let cur_time = Utc::now();
+        let duration = cur_time - start_time;
+
+        println!(
+            "\n\nReview mode done in {}H:{}M:{}S",
+            duration.num_hours(),
+            duration.num_minutes() % 60,
+            duration.num_seconds() % 60
+        );
+        return;
+    }
+
+    // Once all threads finish, safely unwrap the final events
     let all_detected_events = Arc::try_unwrap(all_detected_events)
         .unwrap()
         .into_inner()
         .unwrap();
 
-    // Assume `all_detected_events` is a HashMap<String, Vec<DribbleEvent>>
-    // that you built during video processing.
+    // Build and serialize the export
     let export = DribbleEventsExport {
         info: ExportInfo {
             version: "dribble_events_1.0".to_string(),
@@ -207,14 +210,39 @@ fn main() {
 /// Processes a single video and returns its name plus the merged dribble events.
 fn process_video(
     vid_num: usize,
+    vid_name: String,
     video_data: VideoData,
     config: Config,
     video_mode: &String,
     mut dribble_detector: DribbleDetector,
-) -> (String, Vec<DribbleEvent>) {
+    dribble_events_map: &Option<HashMap<String, Vec<(u32, u32)>>>,
+) -> Option<(String, Vec<DribbleEvent>)> {
+
+    // println!("All events {:?}", dribble_events_map);
+    let review_mode = config.general.review_mode.unwrap_or(false);
+
     if config.general.log_level == "debug" {
         println!("Processing video {}", vid_num);
     }
+
+    let mut vid_events = if review_mode {
+        // if dribble_events_map.is_none()  {
+        //     println!("Skipping video {}, found no dribble events file", vid_num);
+        //     return None;
+        // }
+
+        let dribble_events = dribble_events_map.as_ref().unwrap();
+        
+        if let Some(event) = dribble_events.get(&vid_name) {
+            println!("\n\nFound dribble events for video {}: {:?}", vid_name, event);
+            event.clone()
+        } else {
+            // println!("Skipping video {}, found no dribble events", vid_num);
+            return None;
+        }
+    } else {
+        Vec::new()
+    };
 
     let image_map: HashMap<String, String> = video_data
         .labels
@@ -239,10 +267,48 @@ fn process_video(
 
     let mut detected_events: Vec<DribbleEvent> = Vec::new();
 
-    for (frame_num, image_path) in video_data.image_paths.into_iter().enumerate() {
+    let mut start = 0;
+    let mut end = (video_data.image_paths.len() - 1) as u32;
+    let mut first = true;
+
+    let mut frame_num = 0;
+
+    let iterator_start =  video_data.image_paths.into_iter();
+
+    let mut iterator = iterator_start.clone();
+    let mut cur_path = iterator.next();
+
+    while cur_path.is_some() {
+
+        let image_path = cur_path.clone().unwrap_or_default();
+
         if EXIT_FLAG.load(Ordering::Relaxed) {
             break;
         }
+
+        if review_mode {
+            if vid_events.is_empty() {
+                break;
+            }
+            if frame_num >= end as usize || first {
+                let (new_start, new_end) = vid_events.remove(0);
+                start = new_start;
+                end = new_end;
+                first = false;
+            }
+
+            if frame_num < start as usize  {
+                // println!("continue");
+                frame_num += 1;
+                cur_path = iterator.next();
+                continue;
+            }
+            if frame_num > end as usize {
+                println!("break");
+                break;
+            }    
+        }
+
         let image_file_name = image_path
             .to_string_lossy()
             .split('/')
@@ -267,6 +333,8 @@ fn process_video(
 
         if player_models.is_none() {
             println!("(In main): No players found in frame. Skipping frame...");
+            frame_num += 1;
+            cur_path = iterator.next();
             continue;
         }
 
@@ -296,6 +364,8 @@ fn process_video(
             .expect("Failed to add frame");
 
         if config.general.video_mode != "display" {
+            frame_num += 1;
+            cur_path = iterator.next();
             continue;
         }
 
@@ -310,24 +380,43 @@ fn process_video(
                     .expect("Failed to finish visualization");
                 break;
             }
-            KeyboardInput::NextFrame => {}
+            KeyboardInput::NextFrame => {
+                cur_path = iterator.next();
+            }
             KeyboardInput::PreviousFrame => {}
-            KeyboardInput::NextVideo => {
+            KeyboardInput::NextClip => {
                 visualization_builder
                     .finish()
                     .expect("Failed to finish visualization");
                 break;
             }
+            _ => {}
         }
+        
+        frame_num += 1;
+
+        println!("frames ({start}-{end}): {frame_num}");
+
+        if frame_num == end as usize {
+            
+            println!("Replaying videoclip...");
+            frame_num = start as usize;
+            iterator = iterator_start.clone();
+            cur_path = iterator.next();
+            
+            visualization_builder
+            .finish()
+            .expect("Failed to finish visualization");
+        }
+    
     }
+
+    
 
     let merged_events = combine_consecutive_events(detected_events);
 
-    visualization_builder
-        .finish()
-        .expect("Failed to finish visualization");
 
-    (file_name, merged_events)
+    Some((file_name, merged_events))
 }
 
 /// Merges consecutive dribble events if the start of one event
