@@ -1,17 +1,21 @@
-use std::env;
-
 use serde::Deserialize;
+use std::env;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct GeneralConfig {
     pub num_cores: u32,
     pub log_level: String,
     pub video_mode: String,
+
+    /// If `true`, we will parse an existing dribble_events.json and let the user
+    /// step through each clip to label it as d/t/n.
+    pub review_mode: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DataConfig {
     pub data_path: String,
+    pub dribble_events_path: String,
     pub subsets: Vec<String>,
     pub output_path: String,
     pub huggingface_dataset_url: String,
@@ -61,6 +65,7 @@ impl Config {
     ///
     pub fn apply_env_overrides(mut self) -> Self {
         println!("applying existing env overrides");
+
         if let Ok(dp) = env::var("DATA_PATH") {
             println!("Overriding data path: {}", dp);
             self.data.data_path = dp;
