@@ -64,7 +64,9 @@ impl Config {
     /// - `OUTPUT_PATH`: overrides `data.output_path`
     ///
     pub fn apply_env_overrides(mut self) -> Self {
-        println!("applying existing env overrides");
+        if self.general.log_level != "none" {
+            println!("applying existing env overrides");
+        }
 
         if let Ok(dp) = env::var("DATA_PATH") {
             println!("Overriding data path: {}", dp);
