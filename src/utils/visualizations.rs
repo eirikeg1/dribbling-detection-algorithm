@@ -90,9 +90,10 @@ impl<'a> VisualizationBuilder<'a> {
             if let Some(ref mut writer) = self.writer {
                 writer.release()?;
             }
-        } else {
-            eprintln!("No video writer was used for mode: {}", self.mode);
         }
+        // else {
+        //     eprintln!("No video writer was used for mode: {}", self.mode);
+        // }
         Ok(())
     }
 }

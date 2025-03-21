@@ -16,9 +16,9 @@ pub struct Dataset {
 
 /// Helper to load dribble-events map if in review mode.
 /// Returns a HashMap<video_id, HashSet<frame_nums_in_events>> or None if not in review mode.
-pub fn load_dribble_events_map(config: &Config) -> Option<HashMap<String, Vec<(u32,u32)>>> {
+pub fn load_dribble_events_map(config: &Config) -> Option<HashMap<String, Vec<(u32, u32)>>> {
     // Attempt to read dribble_events.json
-    
+
     let dribble_events_path = &config.data.dribble_events_path;
     let dribble_json = match fs::read_to_string(dribble_events_path) {
         Ok(txt) => txt,
@@ -49,7 +49,10 @@ pub fn load_dribble_events_map(config: &Config) -> Option<HashMap<String, Vec<(u
             }
             let start = event.start_frame;
             let end = event.end_frame.unwrap_or(start);
-            video_to_valid_frames.get_mut(&video_entry.file_name).unwrap().push((start, end));
+            video_to_valid_frames
+                .get_mut(&video_entry.file_name)
+                .unwrap()
+                .push((start, end));
         }
     }
 
