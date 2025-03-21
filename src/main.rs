@@ -2,7 +2,7 @@ use chrono::Utc;
 use dribbling_detection_algorithm::data::dataset::load_dribble_events_map;
 use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::data::models::{
-    Annotation, DribbleEventsExport, ExportInfo, VideoData, VideoDribbleEvents,
+    Annotation, DribbleEventsExport, DribbleLabel, ExportInfo, VideoData, VideoDribbleEvents,
 };
 use dribbling_detection_algorithm::dribbling_detection::create_dribble_models::{
     get_ball_model, get_player_models,
@@ -83,6 +83,30 @@ fn main() {
         None
     };
 
+    let review_mode = config.general.review_mode.unwrap_or(false);
+
+    // ---------------------------------------------------------------------------------------------
+    // Data structures to store the reviewed data, if in review mode
+    // ---------------------------------------------------------------------------------------------
+
+    let mut reviewed_dribbles = if review_mode {
+        Some(VideoData::default())
+    } else {
+        None
+    };
+
+    let mut reviewed_tackles = if review_mode {
+        Some(VideoData::default())
+    } else {
+        None
+    };
+
+    let mut reviewed_other = if review_mode {
+        Some(VideoData::default())
+    } else {
+        None
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Define the per-video processing as a closure to avoid duplication
     // ---------------------------------------------------------------------------------------------
@@ -127,7 +151,6 @@ fn main() {
             let mut all_events = all_detected_events.lock().unwrap();
             all_events.insert(file_name, merged_events);
         }
-
     };
 
     // -------------------------------
@@ -170,7 +193,16 @@ fn main() {
             .map(|(i, (video_id, events))| VideoDribbleEvents {
                 video_id: video_id.clone(),
                 file_name: format!("{:06}.jpg", i + 1),
-                dribble_events: events.clone().iter().map(|e| e.into()).collect(),
+                dribble_events: events
+                    .clone()
+                    .iter()
+                    .map(|e| {
+                        let mut e = Into::<DribbleLabel>::into(e);
+                        e.start_frame = e.start_frame.saturating_sub(20);
+                        e.end_frame = e.end_frame.map(|f| f + 20);
+                        e
+                    })
+                    .collect(),
             })
             .collect(),
     };
@@ -217,12 +249,12 @@ fn process_video(
     mut dribble_detector: DribbleDetector,
     dribble_events_map: &Option<HashMap<String, Vec<(u32, u32)>>>,
 ) -> Option<(String, Vec<DribbleEvent>)> {
-
     // println!("All events {:?}", dribble_events_map);
     let review_mode = config.general.review_mode.unwrap_or(false);
+    let log_level = config.general.log_level.clone();
 
     if config.general.log_level == "debug" {
-        println!("Processing video {}", vid_num);
+        println!("Processing video {}", vid_name);
     }
 
     let mut vid_events = if review_mode {
@@ -232,9 +264,12 @@ fn process_video(
         // }
 
         let dribble_events = dribble_events_map.as_ref().unwrap();
-        
+
         if let Some(event) = dribble_events.get(&vid_name) {
-            println!("\n\nFound dribble events for video {}: {:?}", vid_name, event);
+            println!(
+                " * Found dribble events for video {}: {:?}",
+                vid_name, event
+            );
             event.clone()
         } else {
             // println!("Skipping video {}, found no dribble events", vid_num);
@@ -243,6 +278,9 @@ fn process_video(
     } else {
         Vec::new()
     };
+
+    let total_num_events = vid_events.len();
+    let mut processed_events = 0;
 
     let image_map: HashMap<String, String> = video_data
         .labels
@@ -267,46 +305,63 @@ fn process_video(
 
     let mut detected_events: Vec<DribbleEvent> = Vec::new();
 
-    let mut start = 0;
-    let mut end = (video_data.image_paths.len() - 1) as u32;
+    // Store a clone of vid_events
+    let mut current_interval = if !vid_events.is_empty() {
+        vid_events.remove(0)
+    } else {
+        (0, video_data.image_paths.len() as u32 - 1)
+    };
+
+    let mut start = current_interval.0;
+    let mut end = current_interval.1;
     let mut first = true;
 
-    let mut frame_num = 0;
+    // println!(" --- Start interval: {} - {}", start, end);
 
-    let iterator_start =  video_data.image_paths.into_iter();
+    let mut frame_num = start as usize;
+
+    let iterator_start = video_data.image_paths.into_iter();
 
     let mut iterator = iterator_start.clone();
     let mut cur_path = iterator.next();
 
-    while cur_path.is_some() {
+    let mut replay = false;
 
-        let image_path = cur_path.clone().unwrap_or_default();
+    let mut last_num = 0;
+
+    while cur_path.is_some() {
+        let image_path = cur_path.clone().unwrap();
 
         if EXIT_FLAG.load(Ordering::Relaxed) {
             break;
         }
 
         if review_mode {
-            if vid_events.is_empty() {
+            if processed_events >= total_num_events {
+                println!("No more events to process (1)");
                 break;
             }
-            if frame_num >= end as usize || first {
-                let (new_start, new_end) = vid_events.remove(0);
-                start = new_start;
-                end = new_end;
-                first = false;
-            }
 
-            if frame_num < start as usize  {
+            if frame_num < start as usize {
                 // println!("continue");
                 frame_num += 1;
                 cur_path = iterator.next();
                 continue;
             }
             if frame_num > end as usize {
-                println!("break");
-                break;
-            }    
+                if processed_events >= total_num_events {
+                    println!("No more events to process (2)");
+                    break;
+                }
+                current_interval = vid_events.remove(0);
+                start = current_interval.0;
+                end = current_interval.1;
+
+                first = true;
+                frame_num = start as usize;
+
+                continue;
+            }
         }
 
         let image_file_name = image_path
@@ -347,26 +402,22 @@ fn process_video(
         let maybe_event = dribble_detector.process_frame(dribble_frame);
 
         if let Some(dribble_event) = maybe_event.clone() {
-            if dribble_event.detected_dribble || dribble_event.detected_tackle {
-                println!("Detected dribble event: {:?}", dribble_event.frames);
+            if !replay && (dribble_event.detected_dribble || dribble_event.detected_tackle) {
+                println!("\n\n\nDetected dribble event: {:?}", dribble_event.frames);
                 detected_events.push(dribble_event);
             }
         }
 
-        visualization_builder
-            .add_frame(
-                &mut frame,
-                Some(image_id),
-                Some(&filtered_annotations),
-                &category_map,
-                maybe_event,
-            )
-            .expect("Failed to add frame");
-
-        if config.general.video_mode != "display" {
-            frame_num += 1;
-            cur_path = iterator.next();
-            continue;
+        if config.general.video_mode == "display" {
+            visualization_builder
+                .add_frame(
+                    &mut frame,
+                    Some(image_id),
+                    Some(&filtered_annotations),
+                    &category_map,
+                    maybe_event,
+                )
+                .expect("Failed to add frame");
         }
 
         let input_value =
@@ -378,6 +429,7 @@ fn process_video(
                 visualization_builder
                     .finish()
                     .expect("Failed to finish visualization");
+                println!("Quitting...");
                 break;
             }
             KeyboardInput::NextFrame => {
@@ -385,36 +437,54 @@ fn process_video(
             }
             KeyboardInput::PreviousFrame => {}
             KeyboardInput::NextClip => {
+                processed_events += 1;
+
                 visualization_builder
                     .finish()
                     .expect("Failed to finish visualization");
-                break;
+
+                replay = false;
+                if review_mode && !vid_events.is_empty() {
+                    current_interval = vid_events.remove(0);
+                    start = current_interval.0;
+                    end = current_interval.1;
+                    first = false;
+                }
             }
             _ => {}
         }
-        
+
         frame_num += 1;
+        if review_mode && frame_num >= end as usize {
+            if !replay {
+                println!("Displaying frames ({start}-{end})");
+            }
 
-        println!("frames ({start}-{end}): {frame_num}");
+            // visualization_builder
+            //     .finish()
+            //     .expect("Failed to finish visualization");
 
-        if frame_num == end as usize {
-            
-            println!("Replaying videoclip...");
-            frame_num = start as usize;
-            iterator = iterator_start.clone();
+            frame_num = current_interval.0 as usize;
+
+            iterator = iterator_start
+                .clone()
+                // .skip(frame_num)
+                .collect::<Vec<_>>()
+                .into_iter();
             cur_path = iterator.next();
-            
-            visualization_builder
-            .finish()
-            .expect("Failed to finish visualization");
+            replay = true;
         }
-    
     }
-
-    
 
     let merged_events = combine_consecutive_events(detected_events);
 
+    if log_level == "debug" {
+        if review_mode {
+            println!(" * Finished processing {} events\n", total_num_events);
+        } else {
+            println!(" * Finished processing {} events\n", merged_events.len());
+        }
+    }
 
     Some((file_name, merged_events))
 }
