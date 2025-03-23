@@ -2,7 +2,8 @@ use chrono::Utc;
 use dribbling_detection_algorithm::data::dataset::load_dribble_events_map;
 use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::data::models::{
-    Annotation, DribbleEventsExport, DribbleLabel, ExportInfo, VideoData, VideoDribbleEvents,
+    Annotation, DribbleEventsExport, DribbleLabel, ExportInfo, Image, ReviewedVideoData, VideoData,
+    VideoDribbleEvents,
 };
 use dribbling_detection_algorithm::dribbling_detection::create_dribble_models::{
     get_ball_model, get_player_models,
@@ -15,6 +16,7 @@ use dribbling_detection_algorithm::utils::annotation_calculations::filter_annota
 use dribbling_detection_algorithm::utils::keyboard_input::{
     wait_for_keyboard_input, KeyboardInput,
 };
+use dribbling_detection_algorithm::utils::video_processing::export_reviewed_data;
 use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, data::dataset::Dataset};
 use opencv::imgcodecs;
@@ -22,7 +24,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIter
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
@@ -83,28 +85,10 @@ fn main() {
         None
     };
 
-    let review_mode = config.general.review_mode.unwrap_or(false);
-
-    // ---------------------------------------------------------------------------------------------
-    // Data structures to store the reviewed data, if in review mode
-    // ---------------------------------------------------------------------------------------------
-
-    let mut reviewed_dribbles = if review_mode {
-        Some(VideoData::default())
+    let all_reviewed_video_data = if config.general.review_mode.unwrap_or(false) {
+        Arc::new(Mutex::new(Some(Vec::new())))
     } else {
-        None
-    };
-
-    let mut reviewed_tackles = if review_mode {
-        Some(VideoData::default())
-    } else {
-        None
-    };
-
-    let mut reviewed_other = if review_mode {
-        Some(VideoData::default())
-    } else {
-        None
+        Arc::new(Mutex::new(None))
     };
 
     // ---------------------------------------------------------------------------------------------
@@ -135,7 +119,7 @@ fn main() {
         };
 
         // Process the video
-        let processed_video = process_video(
+        let processed_video = detect_events(
             vid_num,
             video_name,
             video_data,
@@ -143,6 +127,7 @@ fn main() {
             video_mode,
             dribble_detector.clone(),
             &dribble_events_map,
+            all_reviewed_video_data.clone(),
         );
 
         if processed_video.is_some() {
@@ -172,6 +157,21 @@ fn main() {
             duration.num_minutes() % 60,
             duration.num_seconds() % 60
         );
+        println!(
+            "\n\nReview mode done. Exporting reviewed data to {}...",
+            config.data.output_path
+        );
+        let all_reviewed_video_data = Arc::try_unwrap(all_reviewed_video_data)
+            .unwrap()
+            .into_inner()
+            .unwrap()
+            .unwrap_or_default();
+        if let Err(e) = export_reviewed_data(
+            Path::new(&config.data.output_path),
+            &all_reviewed_video_data,
+        ) {
+            eprintln!("Error exporting reviewed data: {}", e);
+        }
         return;
     }
 
@@ -240,7 +240,7 @@ fn main() {
 }
 
 /// Processes a single video and returns its name plus the merged dribble events.
-fn process_video(
+fn detect_events(
     vid_num: usize,
     vid_name: String,
     video_data: VideoData,
@@ -248,10 +248,13 @@ fn process_video(
     video_mode: &String,
     mut dribble_detector: DribbleDetector,
     dribble_events_map: &Option<HashMap<String, Vec<(u32, u32)>>>,
+    all_reviewed_video_data: Arc<Mutex<Option<Vec<ReviewedVideoData>>>>,
 ) -> Option<(String, Vec<DribbleEvent>)> {
     // println!("All events {:?}", dribble_events_map);
     let review_mode = config.general.review_mode.unwrap_or(false);
     let log_level = config.general.log_level.clone();
+
+    let mut reviewed_video_data = review_mode.then(|| ReviewedVideoData::default());
 
     if config.general.log_level == "debug" {
         println!("Processing video {}", vid_name);
@@ -280,7 +283,7 @@ fn process_video(
     };
 
     let total_num_events = vid_events.len();
-    let mut processed_events = 0;
+    let processed_events = 0;
 
     let image_map: HashMap<String, String> = video_data
         .labels
@@ -314,20 +317,17 @@ fn process_video(
 
     let mut start = current_interval.0;
     let mut end = current_interval.1;
-    let mut first = true;
 
     // println!(" --- Start interval: {} - {}", start, end);
 
     let mut frame_num = start as usize;
 
-    let iterator_start = video_data.image_paths.into_iter();
+    let iterator_start = video_data.image_paths.clone().into_iter();
 
     let mut iterator = iterator_start.clone();
     let mut cur_path = iterator.next();
 
     let mut replay = false;
-
-    let mut last_num = 0;
 
     while cur_path.is_some() {
         let image_path = cur_path.clone().unwrap();
@@ -357,7 +357,6 @@ fn process_video(
                 start = current_interval.0;
                 end = current_interval.1;
 
-                first = true;
                 frame_num = start as usize;
 
                 continue;
@@ -437,21 +436,69 @@ fn process_video(
             }
             KeyboardInput::PreviousFrame => {}
             KeyboardInput::NextClip => {
-                processed_events += 1;
-
                 visualization_builder
                     .finish()
                     .expect("Failed to finish visualization");
 
-                replay = false;
-                if review_mode && !vid_events.is_empty() {
-                    current_interval = vid_events.remove(0);
-                    start = current_interval.0;
-                    end = current_interval.1;
-                    first = false;
+                break;
+            }
+            KeyboardInput::Dribble => {
+                if review_mode {
+                    println!("Adding dribble event");
+                    let filtered_video_data = filter_video_data(video_data.clone(), start, end);
+                    reviewed_video_data
+                        .as_mut()
+                        .unwrap()
+                        .dribble_data
+                        .push(filtered_video_data);
+
+                    all_reviewed_video_data
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .unwrap()
+                        .push(reviewed_video_data.clone().unwrap());
+                    break;
                 }
             }
-            _ => {}
+            KeyboardInput::Tackle => {
+                if review_mode {
+                    println!("Adding tackle event");
+                    let filtered_video_data = filter_video_data(video_data.clone(), start, end);
+                    reviewed_video_data
+                        .as_mut()
+                        .unwrap()
+                        .tackle_data
+                        .push(filtered_video_data);
+
+                    all_reviewed_video_data
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .unwrap()
+                        .push(reviewed_video_data.clone().unwrap());
+                    break;
+                }
+            }
+            KeyboardInput::None => {
+                if review_mode {
+                    println!("Adding other event");
+                    let filtered_video_data = filter_video_data(video_data.clone(), start, end);
+                    reviewed_video_data
+                        .as_mut()
+                        .unwrap()
+                        .other_data
+                        .push(filtered_video_data);
+
+                    all_reviewed_video_data
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .unwrap()
+                        .push(reviewed_video_data.clone().unwrap());
+                    break;
+                }
+            }
         }
 
         frame_num += 1;
@@ -520,4 +567,55 @@ fn combine_consecutive_events(mut events: Vec<DribbleEvent>) -> Vec<DribbleEvent
         merged.push(event);
     }
     merged
+}
+
+fn filter_video_data(video_data: VideoData, start: u32, end: u32) -> VideoData {
+    let mut filtered_data = VideoData::default();
+    filtered_data.dir_path = video_data.dir_path.clone();
+
+    // Helper to parse the zero-padded frame number from the filename (e.g. "0001.jpg" -> 1).
+    let in_range = |name: &str| -> bool {
+        if let Some(stem) = std::path::Path::new(name).file_stem() {
+            if let Ok(num) = stem.to_string_lossy().parse::<u32>() {
+                return num >= start && num <= end;
+            }
+        }
+        false
+    };
+
+    let new_image_paths: Vec<PathBuf> = video_data
+        .image_paths
+        .into_iter()
+        .filter(|p| {
+            if let Some(fname) = p.file_name().map(|f| f.to_string_lossy().to_string()) {
+                in_range(&fname)
+            } else {
+                false
+            }
+        })
+        .collect();
+
+    let new_images: Vec<Image> = video_data
+        .labels
+        .images
+        .into_iter()
+        .filter(|img| in_range(&img.file_name))
+        .collect();
+
+    let valid_ids: std::collections::HashSet<String> =
+        new_images.iter().map(|img| img.image_id.clone()).collect();
+
+    let new_annotations: Vec<Annotation> = video_data
+        .labels
+        .annotations
+        .into_iter()
+        .filter(|ann| valid_ids.contains(&ann.image_id))
+        .collect();
+
+    filtered_data.image_paths = new_image_paths;
+    filtered_data.labels.images = new_images;
+    filtered_data.labels.annotations = new_annotations;
+    filtered_data.labels.categories = video_data.labels.categories;
+
+    filtered_data
 }

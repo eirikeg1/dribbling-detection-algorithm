@@ -7,18 +7,18 @@ video_mode = "display" # Possible values: "download", "display" or "none" (If us
 [dribbling_detection]
 use_2d = true # Whether to use homographically transformed 2d coordinates or image bounding boxes
 outer_threshold = 20 # Minumum number of frames in an event. Mainly to prevent predictions of jumping 2d coords
-inner_threshold = 15 # The time a player is within the inner threshold does not count to outer
+inner_threshold = 12 # The time a player is within the inner threshold does not count to outer
 frame_skip = 5
 min_duration = 1.6  # Minimum duration for an action to be classified as dribbling
-inner_radius = 2.0 # Percent of screen from ball
-outer_radius = 3.1
+inner_radius = 1.5 # Percent of screen from ball
+outer_radius = 2.5
 outer_in_threshold = 5
 outer_out_threshold = 5
 ignore_person_classes = true
-ignore_teams = false
+ignore_teams = true
 
 [visualization]
-autoplay = false
+autoplay = true
 scale_factor = 0.6 # Scale factor for video and player bounding boxes. Usually best to keep at 1 if downloading
 minimap_x = 20
 minimap_y = 200

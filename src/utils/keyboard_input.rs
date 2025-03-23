@@ -32,6 +32,9 @@ fn parse_input_code(
     filtered_keys: Option<&[i32]>,
 ) -> Result<KeyboardInput, opencv::Error> {
     let key_code = code?;
+    if key_code > 0 {
+        println!("Key code: {}", key_code);
+    }
 
     // If filtered_keys is provided, only process key if it's in the allowed list
     if let Some(allowed_keys) = filtered_keys {
@@ -69,7 +72,7 @@ pub fn wait_for_keyboard_input(config: &Config) -> opencv::Result<KeyboardInput>
             1
         };
 
-        return parse_input_code(highgui::wait_key(wait_time), Some(&[32, 40, 113]));
+        return parse_input_code(highgui::wait_key(wait_time), None);
     }
 
     parse_input_code(highgui::wait_key(0), None)

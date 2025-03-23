@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use serde::{Serialize, Deserialize};
 
 use crate::dribbling_detection::dribble_models::DribbleEvent;
 
@@ -50,14 +50,14 @@ pub struct DribbleEventsExport {
     pub videos: Vec<VideoDribbleEvents>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum SpecialHighlight {
     PossesionHolder,
     Defender,
     Ball,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Info {
     pub version: String,
     pub game_id: Option<String>,
@@ -77,7 +77,7 @@ pub struct Info {
 }
 
 // Structure to represent an Image
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Image {
     pub is_labeled: bool,
     pub image_id: String,
@@ -89,7 +89,7 @@ pub struct Image {
 }
 
 // Represents the image-space bounding box
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BboxImage {
     pub x: f64,
     pub y: f64,
@@ -100,7 +100,7 @@ pub struct BboxImage {
 }
 
 // Represents the pitch-space bounding box
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BboxPitch {
     pub x_bottom_left: f64,
     pub y_bottom_left: f64,
@@ -111,7 +111,7 @@ pub struct BboxPitch {
 }
 
 // Represents the raw pitch-space bounding box (if available)
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BboxPitchRaw {
     pub x_bottom_left: f64,
     pub y_bottom_left: f64,
@@ -122,14 +122,14 @@ pub struct BboxPitchRaw {
 }
 
 // A structure for line points associated with pitch markings
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LinePoint {
     pub x: f64,
     pub y: f64,
 }
 
 // Structure to represent an Annotation
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Default, Serialize)]
 pub struct Annotation {
     pub id: String,
     pub image_id: String,
@@ -144,14 +144,14 @@ pub struct Annotation {
     pub lines: Option<HashMap<String, Vec<LinePoint>>>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Attribute {
     pub role: Option<String>,
     pub jersey: Option<String>,
     pub team: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Category {
     pub supercategory: String,
     pub id: u32,
@@ -160,7 +160,7 @@ pub struct Category {
 }
 
 // Structure to represent the Labels JSON file
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Labels {
     pub info: Info,
     pub images: Vec<Image>,
@@ -168,9 +168,34 @@ pub struct Labels {
     pub categories: Vec<Category>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct VideoData {
     pub dir_path: PathBuf,
     pub image_paths: Vec<PathBuf>,
     pub labels: Labels,
+}
+
+impl VideoData {
+    pub fn add_video_annotation(
+        &mut self,
+        image_path: PathBuf,
+        image: Image,
+        annotation: Annotation,
+        category: Category,
+    ) {
+        self.image_paths.push(image_path);
+        self.labels.images.push(image);
+        self.labels.annotations.push(annotation);
+        self.labels.categories.push(category);
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Data structures to store the reviewed data, if in review mode
+// -------------------------------------------------------------------------------------------------
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct ReviewedVideoData {
+    pub dribble_data: Vec<VideoData>,
+    pub tackle_data: Vec<VideoData>,
+    pub other_data: Vec<VideoData>,
 }
