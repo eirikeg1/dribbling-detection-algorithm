@@ -1,6 +1,6 @@
 use chrono::Utc;
 use serde_json::to_writer_pretty;
-use std::fs::{create_dir_all, copy, File};
+use std::fs::{copy, create_dir_all, File};
 use std::io::Result;
 use std::path::Path;
 
