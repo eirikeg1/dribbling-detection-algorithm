@@ -435,9 +435,9 @@ fn detect_events(
             ball: ball_model.unwrap_or(Ball { x: 0.0, y: 0.0 }),
         };
 
-        let maybe_event = dribble_detector.process_frame(dribble_frame);
+        let potential_event = dribble_detector.process_frame(dribble_frame);
 
-        if let Some(dribble_event) = maybe_event.clone() {
+        if let Some(dribble_event) = potential_event.clone() {
             if !replay && (dribble_event.detected_dribble || dribble_event.detected_tackle) {
                 println!("\n\n\nDetected dribble event: {:?}", dribble_event.frames);
                 detected_events.push(dribble_event);
@@ -451,7 +451,6 @@ fn detect_events(
                     Some(image_id),
                     Some(&filtered_annotations),
                     &category_map,
-                    maybe_event,
                     inner_rad,
                     outer_rad,
                 )

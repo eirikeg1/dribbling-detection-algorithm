@@ -1,5 +1,5 @@
 use crate::data::models::Annotation;
-use crate::{config::Config, dribbling_detection::dribble_models::DribbleEvent};
+use crate::config::Config;
 use opencv::{core::Mat, highgui, prelude::*, videoio::VideoWriter};
 use std::collections::HashMap;
 use std::{
@@ -54,7 +54,6 @@ impl<'a> VisualizationBuilder<'a> {
         image_id: Option<&str>,
         annotations: Option<&[Annotation]>,
         categories: &HashMap<String, u32>,
-        dribble_event: Option<DribbleEvent>,
         inner_rad: f64,
         outer_rad: f64,
     ) -> opencv::Result<()> {
@@ -70,7 +69,6 @@ impl<'a> VisualizationBuilder<'a> {
                 frame,
                 ann,
                 categories,
-                dribble_event,
                 &id,
                 self.config,
                 inner_rad,

@@ -2,7 +2,6 @@ use super::annotation_calculations::get_annotation_color;
 use super::draw_pitch_minimap::draw_pitch_markings_on_minimap;
 use crate::config::Config;
 use crate::data::models::{Annotation, BboxImage};
-use crate::dribbling_detection::dribble_models::DribbleEvent;
 use opencv::core::{self, Mat, Rect, Scalar};
 use opencv::imgproc;
 use opencv::prelude::*;
@@ -12,7 +11,6 @@ pub fn draw_annotations(
     frame: &mut Mat,
     annotations: &[Annotation],
     categories: &HashMap<String, u32>,
-    dribble_event: Option<DribbleEvent>,
     image_id: &str,
     config: &Config,
     inner_rad: f64,
@@ -61,7 +59,7 @@ pub fn draw_annotations(
     draw_pitch_markings_on_minimap(&mut minimap, config)?;
 
     for annotation in &annotations {
-        if annotation.category_id == *ball_id && dribble_event.is_some() {
+        if annotation.category_id == *ball_id {
             if config.dribbling_detection.use_2d {
                 // Draw circles in pitch space on the minimap
                 if let Some(bbox_pitch) = &annotation.bbox_pitch {
