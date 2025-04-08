@@ -44,13 +44,13 @@ pub fn load_dribble_events_map(config: &Config) -> Option<HashMap<String, Vec<(u
 
         // Insert all event frames
         for event in &video_entry.dribble_events {
-            if !video_to_valid_frames.contains_key(&video_entry.file_name) {
-                video_to_valid_frames.insert(video_entry.file_name.clone(), vec![]);
+            if !video_to_valid_frames.contains_key(&video_entry.video_id) {
+                video_to_valid_frames.insert(video_entry.video_id.clone(), vec![]);
             }
             let start = event.start_frame;
             let end = event.end_frame.unwrap_or(start);
             video_to_valid_frames
-                .get_mut(&video_entry.file_name)
+                .get_mut(&video_entry.video_id)
                 .unwrap()
                 .push((start, end));
         }
