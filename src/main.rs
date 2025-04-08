@@ -12,7 +12,9 @@ use dribbling_detection_algorithm::dribbling_detection::dribble_detector::Dribbl
 use dribbling_detection_algorithm::dribbling_detection::dribble_models::{
     Ball, DribbleEvent, DribbleFrame,
 };
-use dribbling_detection_algorithm::utils::annotation_calculations::filter_annotations;
+use dribbling_detection_algorithm::utils::annotation_calculations::{
+    compute_average_player_bbox_height, filter_annotations,
+};
 use dribbling_detection_algorithm::utils::keyboard_input::{
     wait_for_keyboard_input, KeyboardInput,
 };
@@ -20,7 +22,7 @@ use dribbling_detection_algorithm::utils::video_processing::export_reviewed_data
 use dribbling_detection_algorithm::utils::visualizations::VisualizationBuilder;
 use dribbling_detection_algorithm::{config::Config, data::dataset::Dataset};
 use opencv::imgcodecs;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -71,8 +73,9 @@ fn main() {
 
     let dataset = Dataset::new(config.clone());
     let data_iter: Vec<_> = dataset.iter_subset(&"interpolated-predictions").collect();
-    let inner_rad = config.dribbling_detection.inner_radius;
-    let outer_rad = config.dribbling_detection.outer_radius;
+
+    // let inner_rad = config.dribbling_detection.inner_radius;
+    // let outer_rad = config.dribbling_detection.outer_radius;
 
     println!("Number of videos to process: {}", data_iter.len());
 
@@ -92,11 +95,46 @@ fn main() {
     };
 
     // ---------------------------------------------------------------------------------------------
-    // Define the per-video processing as a closure to avoid duplication
+    // Define the per-video processing function
     // ---------------------------------------------------------------------------------------------
-    let process_item = |(vid_num, video_data): (usize, &Result<VideoData, _>)| {
+    let process_item = |video_data: &Result<VideoData, _>| {
+        // Skip this video if it can't be unwrapped
+        let video_data = match video_data {
+            Ok(vd) => vd.clone(),
+            Err(_) => return,
+        };
+
+        let category_map: HashMap<String, u32> = video_data
+            .labels
+            .categories
+            .iter()
+            .map(|c| (c.name.clone(), c.id))
+            .collect();
+
+        let average_bbox_height =
+            compute_average_player_bbox_height(&video_data.labels.annotations, &category_map);
+        let scale_factor = average_bbox_height * 0.2;
+
+        let (inner_rad, outer_rad) = match config.dribbling_detection.use_2d {
+            true => (
+                config.dribbling_detection.inner_radius,
+                config.dribbling_detection.outer_radius,
+            ),
+            false => (
+                config.dribbling_detection.inner_radius * scale_factor,
+                config.dribbling_detection.outer_radius * scale_factor,
+            ),
+        };
+
+        let video_name = video_data
+            .dir_path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
         // Build a DribbleDetector for this video
-        let video_name = format!("{:06}.jpg", vid_num);
+        // let video_name = format!("{:06}.jpg", vid_num);
         let dribble_detector = DribbleDetector::new(
             video_name.clone(),
             inner_rad,
@@ -112,15 +150,8 @@ fn main() {
             return;
         }
 
-        // Skip this video if it can't be unwrapped
-        let video_data = match video_data {
-            Ok(vd) => vd.clone(),
-            Err(_) => return,
-        };
-
         // Process the video
         let processed_video = detect_events(
-            vid_num,
             video_name,
             video_data,
             config.clone(),
@@ -128,6 +159,8 @@ fn main() {
             dribble_detector.clone(),
             &dribble_events_map,
             all_reviewed_video_data.clone(),
+            inner_rad,
+            outer_rad,
         );
 
         if processed_video.is_some() {
@@ -142,9 +175,9 @@ fn main() {
     // Use parallel or sequential iteration based on num_threads
     // -------------------------------
     if num_threads > 1 {
-        data_iter.par_iter().enumerate().for_each(process_item);
+        data_iter.par_iter().for_each(process_item);
     } else {
-        data_iter.iter().enumerate().for_each(process_item);
+        data_iter.iter().for_each(process_item);
     }
 
     if config.general.review_mode.unwrap_or(false) {
@@ -189,17 +222,17 @@ fn main() {
         },
         videos: all_detected_events
             .iter()
-            .enumerate()
-            .map(|(i, (video_id, events))| VideoDribbleEvents {
+            .map(|(video_id, events)| VideoDribbleEvents {
                 video_id: video_id.clone(),
-                file_name: format!("{:06}.jpg", i + 1),
                 dribble_events: events
                     .clone()
                     .iter()
                     .map(|e| {
+                        let extra_frames_before = 30;
+                        let extra_frames_after = 90;
                         let mut e = Into::<DribbleLabel>::into(e);
-                        e.start_frame = e.start_frame.saturating_sub(20);
-                        e.end_frame = e.end_frame.map(|f| f + 20);
+                        e.start_frame = e.start_frame.saturating_sub(extra_frames_before);
+                        e.end_frame = e.end_frame.map(|f| f + extra_frames_after);
                         e
                     })
                     .collect(),
@@ -241,7 +274,6 @@ fn main() {
 
 /// Processes a single video and returns its name plus the merged dribble events.
 fn detect_events(
-    vid_num: usize,
     vid_name: String,
     video_data: VideoData,
     config: Config,
@@ -249,8 +281,10 @@ fn detect_events(
     mut dribble_detector: DribbleDetector,
     dribble_events_map: &Option<HashMap<String, Vec<(u32, u32)>>>,
     all_reviewed_video_data: Arc<Mutex<Option<Vec<ReviewedVideoData>>>>,
+    inner_rad: f64,
+    outer_rad: f64,
 ) -> Option<(String, Vec<DribbleEvent>)> {
-    // println!("All events {:?}", dribble_events_map);
+
     let review_mode = config.general.review_mode.unwrap_or(false);
     let log_level = config.general.log_level.clone();
 
@@ -261,10 +295,10 @@ fn detect_events(
     }
 
     let mut vid_events = if review_mode {
-        // if dribble_events_map.is_none()  {
-        //     println!("Skipping video {}, found no dribble events file", vid_num);
-        //     return None;
-        // }
+        if dribble_events_map.is_none() {
+            println!("Skipping video {}, found no dribble events file", vid_name);
+            return None;
+        }
 
         let dribble_events = dribble_events_map.as_ref().unwrap();
 
@@ -275,7 +309,6 @@ fn detect_events(
             );
             event.clone()
         } else {
-            // println!("Skipping video {}, found no dribble events", vid_num);
             return None;
         }
     } else {
@@ -300,7 +333,8 @@ fn detect_events(
         .collect();
 
     let annotations: Vec<Annotation> = video_data.labels.annotations.clone();
-    let file_name = format!("video_{}", vid_num);
+    // let file_name = format!("video_{}", vid_num);
+    let file_name = vid_name.clone();
 
     let mut visualization_builder =
         VisualizationBuilder::new(video_mode.as_str(), &file_name, &config)
@@ -318,9 +352,7 @@ fn detect_events(
     let mut start = current_interval.0;
     let mut end = current_interval.1;
 
-    // println!(" --- Start interval: {} - {}", start, end);
-
-    let mut frame_num = start as usize;
+    let mut frame_num;
 
     let iterator_start = video_data.image_paths.clone().into_iter();
 
@@ -331,6 +363,16 @@ fn detect_events(
 
     while cur_path.is_some() {
         let image_path = cur_path.clone().unwrap();
+        let image_name = cur_path
+            .clone()?
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+
+        frame_num = image_name
+            .parse::<usize>()
+            .expect("Failed to parse frame number from image name");
 
         if EXIT_FLAG.load(Ordering::Relaxed) {
             break;
@@ -343,8 +385,6 @@ fn detect_events(
             }
 
             if frame_num < start as usize {
-                // println!("continue");
-                frame_num += 1;
                 cur_path = iterator.next();
                 continue;
             }
@@ -356,9 +396,6 @@ fn detect_events(
                 current_interval = vid_events.remove(0);
                 start = current_interval.0;
                 end = current_interval.1;
-
-                frame_num = start as usize;
-
                 continue;
             }
         }
@@ -382,12 +419,12 @@ fn detect_events(
             config.dribbling_detection.ignore_person_classes,
             config.dribbling_detection.ignore_teams,
         );
-        let ball_model = get_ball_model(&category_map, &filtered_annotations);
-        let player_models = get_player_models(&category_map, &filtered_annotations);
+        let ball_model = get_ball_model(&category_map, &filtered_annotations, &config);
+        let player_models = get_player_models(&category_map, &filtered_annotations, &config);
 
         if player_models.is_none() {
             println!("(In main): No players found in frame. Skipping frame...");
-            frame_num += 1;
+            // frame_num += 1;
             cur_path = iterator.next();
             continue;
         }
@@ -415,6 +452,8 @@ fn detect_events(
                     Some(&filtered_annotations),
                     &category_map,
                     maybe_event,
+                    inner_rad,
+                    outer_rad,
                 )
                 .expect("Failed to add frame");
         }
@@ -501,17 +540,10 @@ fn detect_events(
             }
         }
 
-        frame_num += 1;
-        if review_mode && frame_num >= end as usize {
+        if review_mode && (frame_num >= end as usize || cur_path.is_none()) {
             if !replay {
                 println!("Displaying frames ({start}-{end})");
             }
-
-            // visualization_builder
-            //     .finish()
-            //     .expect("Failed to finish visualization");
-
-            frame_num = current_interval.0 as usize;
 
             iterator = iterator_start
                 .clone()
