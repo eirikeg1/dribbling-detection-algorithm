@@ -207,7 +207,7 @@ impl DribbleDetector {
                 None => {
                     // Possession holder not in frame: end event.
                     event.end_frame = Some(frame.frame_number);
-                    event.finished = false;
+                    event.finished = true;
                     return self.finalize_event(frame.frame_number);
                 }
             };
