@@ -39,7 +39,6 @@ impl From<&DribbleEvent> for DribbleLabel {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct VideoDribbleEvents {
     pub video_id: String,
-    pub file_name: String,
     pub dribble_events: Vec<DribbleLabel>,
 }
 
@@ -191,7 +190,7 @@ impl VideoData {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Data structures to store the reviewed data, if in review mode
+// Data structure to store the reviewed data, if in review mode
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct ReviewedVideoData {
