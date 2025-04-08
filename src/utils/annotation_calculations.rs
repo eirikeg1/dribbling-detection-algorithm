@@ -80,12 +80,14 @@ pub fn get_annotation_color(annotation: &Annotation, categories: &HashMap<String
 pub fn annotation_comparator(
     base_annotation: Annotation,
     other_annotations: Vec<Annotation>,
+    use_2d: bool,
 ) -> Option<Annotation> {
     let mut closest_annotation = None;
     let mut closest_distance = f64::MAX;
 
     for annotation in other_annotations {
-        let distance = calculate_annotation_distance(base_annotation.clone(), annotation.clone())?;
+        let distance =
+            calculate_annotation_distance(base_annotation.clone(), annotation.clone(), use_2d)?;
         if distance < closest_distance {
             closest_distance = distance;
             closest_annotation = Some(annotation);
@@ -100,8 +102,9 @@ pub fn is_within_range(
     base_annotation: Annotation,
     other_annotation: Annotation,
     range: f64,
+    use_2d: bool,
 ) -> Option<bool> {
-    let distance = calculate_annotation_distance(base_annotation, other_annotation)?;
+    let distance = calculate_annotation_distance(base_annotation, other_annotation, use_2d)?;
     Some(distance < range)
 }
 
@@ -109,22 +112,53 @@ pub fn is_within_range(
 pub fn calculate_annotation_distance(
     annotation_1: Annotation,
     annotation_2: Annotation,
+    use_2d: bool,
 ) -> Option<f64> {
-    let coords_1 = calculate_bbox_pitch_center(annotation_1)?;
-    let coords_2 = calculate_bbox_pitch_center(annotation_2)?;
+    let coords_1 = calculate_bbox_pitch_center(annotation_1, use_2d)?;
+    let coords_2 = calculate_bbox_pitch_center(annotation_2, use_2d)?;
 
     Some(((coords_2.0 - coords_1.0).powi(2) + (coords_2.1 - coords_1.1).powi(2)).sqrt())
 }
 
 /// Calculate the center of the BboxPitch
-pub fn calculate_bbox_pitch_center(annotation: Annotation) -> Option<(f64, f64)> {
-    let bbox = annotation.bbox_pitch?;
+/// If `use_2d` is true, get the 2D center, if false get the bottom-center of the bounding box
+pub fn calculate_bbox_pitch_center(annotation: Annotation, use_2d: bool) -> Option<(f64, f64)> {
+    let (x_center, y_center) = if use_2d {
+        let bbox = annotation.bbox_pitch?;
+        // Calculate the geometric center
+        let x_center = (bbox.x_bottom_left + bbox.x_bottom_right) / 2.0;
+        let y_center = (bbox.y_bottom_left + bbox.y_bottom_right) / 2.0;
 
-    // Calculate the geometric center
-    let x_center = (bbox.x_bottom_left + bbox.x_bottom_right) / 2.0;
-    let y_center = (bbox.y_bottom_left + bbox.y_bottom_right) / 2.0;
+        (x_center, y_center)
+    } else {
+        let bbox = annotation.bbox_image?;
+        (bbox.x_center, bbox.y)
+    };
 
     Some((x_center, y_center))
+}
+
+pub fn compute_average_player_bbox_height(
+    annotations: &[Annotation],
+    category_map: &HashMap<String, u32>,
+) -> f64 {
+    let player_cat_id = category_map.get("player").copied().unwrap_or(1);
+    let mut total_height = 0.0;
+    let mut count = 0;
+
+    for ann in annotations {
+        if ann.category_id == player_cat_id {
+            if let Some(bi) = &ann.bbox_image {
+                total_height += bi.h;
+                count += 1;
+            }
+        }
+    }
+    if count > 0 {
+        total_height / count as f64
+    } else {
+        1.0 // fallback if no players
+    }
 }
 
 #[cfg(test)]
@@ -150,7 +184,7 @@ mod tests {
     #[test]
     fn test_calculate_bbox_pitch_center() {
         let annotation = create_annotation(0.0, 0.0, 2.0, 2.0);
-        let center = calculate_bbox_pitch_center(annotation).unwrap();
+        let center = calculate_bbox_pitch_center(annotation, true).unwrap();
         assert_eq!(center, (1.0, 1.0));
     }
 
@@ -158,7 +192,7 @@ mod tests {
     fn test_calculate_annotation_distance() {
         let annotation_1 = create_annotation(0.0, 0.0, 2.0, 2.0); // center = (1, 1)
         let annotation_2 = create_annotation(3.0, 3.0, 5.0, 5.0); // center = (4, 4)
-        let distance = calculate_annotation_distance(annotation_1, annotation_2).unwrap();
+        let distance = calculate_annotation_distance(annotation_1, annotation_2, true).unwrap();
         assert!((distance - 4.242).abs() < 0.001); // sqrt((4-1)^2 + (4-1)^2) = 4.242
     }
 
@@ -166,7 +200,7 @@ mod tests {
     fn test_is_within_range() {
         let annotation_1 = create_annotation(0.0, 0.0, 2.0, 2.0); // center = (1, 1)
         let annotation_2 = create_annotation(1.0, 1.0, 3.0, 3.0); // center = (2, 2)
-        let result = is_within_range(annotation_1, annotation_2, 2.0).unwrap();
+        let result = is_within_range(annotation_1, annotation_2, 2.0, true).unwrap();
         assert!(result); // sqrt((2-1)^2 + (2-1)^2) = sqrt(2) = 1.414 < 2.0
     }
 
@@ -178,7 +212,8 @@ mod tests {
             create_annotation(1.0, 1.0, 3.0, 3.0), // center = (2, 2)
             create_annotation(6.0, 6.0, 8.0, 8.0), // center = (7, 7)
         ];
-        let closest_annotation = annotation_comparator(base_annotation, other_annotations).unwrap();
+        let closest_annotation =
+            annotation_comparator(base_annotation, other_annotations, true).unwrap();
         let expected_annotation = create_annotation(1.0, 1.0, 3.0, 3.0);
         assert_eq!(
             closest_annotation.bbox_pitch.unwrap().x_bottom_left,

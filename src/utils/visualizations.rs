@@ -7,7 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::{annotations::draw_annotations, image_calculations::scale_frame};
+use super::annotations::draw_annotations;
+use super::image_calculations::scale_frame;
 
 /// A builder to handle video creation or visualization,
 /// allowing you to add frames, one at a time.
@@ -54,6 +55,8 @@ impl<'a> VisualizationBuilder<'a> {
         annotations: Option<&[Annotation]>,
         categories: &HashMap<String, u32>,
         dribble_event: Option<DribbleEvent>,
+        inner_rad: f64,
+        outer_rad: f64,
     ) -> opencv::Result<()> {
         if frame.empty() {
             eprintln!("Warning: Empty frame was provided.");
@@ -63,7 +66,16 @@ impl<'a> VisualizationBuilder<'a> {
         scale_frame(frame, self.config)?;
 
         if let (Some(id), Some(ann)) = (image_id, annotations) {
-            draw_annotations(frame, ann, categories, dribble_event, &id, self.config)?;
+            draw_annotations(
+                frame,
+                ann,
+                categories,
+                dribble_event,
+                &id,
+                self.config,
+                inner_rad,
+                outer_rad,
+            )?;
         }
 
         match self.mode {
