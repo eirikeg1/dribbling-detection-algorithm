@@ -23,6 +23,7 @@ pub struct DataConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DribblingDetectionConfig {
+    pub use_2d: bool,
     pub outer_threshold: u32,
     pub inner_threshold: u32,
     pub frame_skip: u32,
