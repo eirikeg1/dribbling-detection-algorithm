@@ -32,9 +32,6 @@ fn parse_input_code(
     filtered_keys: Option<&[i32]>,
 ) -> Result<KeyboardInput, opencv::Error> {
     let key_code = code?;
-    if key_code > 0 {
-        println!("Key code: {}", key_code);
-    }
 
     // If filtered_keys is provided, only process key if it's in the allowed list
     if let Some(allowed_keys) = filtered_keys {
@@ -63,7 +60,7 @@ fn parse_input_code(
 ///   - down arrow for next clip,
 ///   - d/t/n to label the clip.
 pub fn wait_for_keyboard_input(config: &Config) -> opencv::Result<KeyboardInput> {
-    if config.visualization.autoplay {
+    if config.visualization.autoplay{
         // Autoplay => proceed automatically
 
         let wait_time = if config.general.video_mode == "display" {
@@ -75,5 +72,9 @@ pub fn wait_for_keyboard_input(config: &Config) -> opencv::Result<KeyboardInput>
         return parse_input_code(highgui::wait_key(wait_time), None);
     }
 
-    parse_input_code(highgui::wait_key(0), None)
+    if config.general.video_mode == "display" {
+        parse_input_code(highgui::wait_key(0), None)
+    } else {
+        Ok(KeyboardInput::NextFrame)
+    }
 }
