@@ -1,4 +1,5 @@
 use chrono::Utc;
+use clap::Parser;
 use dribbling_detection_algorithm::data::dataset::load_dribble_events_map;
 use dribbling_detection_algorithm::data::download_data::download_and_extract_dataset;
 use dribbling_detection_algorithm::data::models::{
@@ -15,6 +16,7 @@ use dribbling_detection_algorithm::dribbling_detection::dribble_models::{
 use dribbling_detection_algorithm::utils::annotation_calculations::{
     compute_average_player_bbox_height, filter_annotations,
 };
+use dribbling_detection_algorithm::utils::keyboard_args::Args;
 use dribbling_detection_algorithm::utils::keyboard_input::{
     wait_for_keyboard_input, KeyboardInput,
 };
@@ -24,7 +26,6 @@ use dribbling_detection_algorithm::{config::Config, data::dataset::Dataset};
 use opencv::imgcodecs;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -35,15 +36,23 @@ static EXIT_FLAG: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     let start_time = Utc::now();
-    let args: Vec<String> = env::args().collect();
-    let should_download = args.contains(&"--download".to_string());
+    let args = Args::parse();
 
-    if should_download {
+    if args.download {
         println!("Data download initiated...");
         let config_content =
             fs::read_to_string("config.toml").expect("Unable to read the config file");
-        let config: Config =
+        let mut config: Config =
             toml::from_str(&config_content).expect("Unable to parse the config file");
+
+        config = config.apply_env_overrides();
+
+        if let Some(ip) = &args.input {
+            config.data.data_path = ip.clone();
+        }
+        if let Some(op) = &args.output {
+            config.data.output_path = op.clone();
+        }
 
         let rt = Runtime::new().unwrap();
         rt.block_on(download_and_extract_dataset(&config));
@@ -53,8 +62,24 @@ fn main() {
     println!("\nRunning dribbling detection");
 
     let config_content = fs::read_to_string("config.toml").expect("Unable to read the config file");
-    let config: Config = toml::from_str(&config_content).expect("Unable to parse the config file");
-    let config = config.apply_env_overrides();
+    let mut config: Config =
+        toml::from_str(&config_content).expect("Unable to parse the config file");
+    config = config.apply_env_overrides();
+
+    // If the input or output paths were set on the command line, override the config
+    if let Some(ip) = &args.input {
+        println!("Overriding input path: {}", ip);
+        config.data.data_path = ip.clone();
+    }
+    if let Some(op) = &args.output {
+        println!("Overriding output path: {}", op);
+        config.data.output_path = op.clone();
+    }
+    if args.review.is_some() && args.review.unwrap() {
+        println!("Enabling review mode from keyboard args");
+        config.general.review_mode = Some(true);
+        config.general.video_mode = "display".to_string();
+    }
 
     println!("{:#?}", config);
 
@@ -143,6 +168,7 @@ fn main() {
             config.dribbling_detection.outer_threshold,
             config.dribbling_detection.outer_in_threshold,
             config.dribbling_detection.outer_out_threshold,
+            config.clone(),
         );
 
         // Check for early exit
@@ -183,6 +209,11 @@ fn main() {
     if config.general.review_mode.unwrap_or(false) {
         let cur_time = Utc::now();
         let duration = cur_time - start_time;
+        let all_reviewed_video_data = Arc::try_unwrap(all_reviewed_video_data)
+            .unwrap()
+            .into_inner()
+            .unwrap()
+            .unwrap_or_default();
 
         println!(
             "\n\nReview mode done in {}H:{}M:{}S",
@@ -190,15 +221,23 @@ fn main() {
             duration.num_minutes() % 60,
             duration.num_seconds() % 60
         );
+        
+        let total_dribbles: usize = all_reviewed_video_data.iter().map(|r| r.dribble_data.len()).sum();
+        let total_tackles: usize = all_reviewed_video_data.iter().map(|r| r.tackle_data.len()).sum();
+        let total_others: usize = all_reviewed_video_data.iter().map(|r| r.other_data.len()).sum();
+
         println!(
-            "\n\nReview mode done. Exporting reviewed data to {}...",
+            "Approved {} dribbles, {} tackles and disaproved {} events",
+            total_dribbles,
+            total_tackles,
+            total_others,
+        );
+
+        println!(
+            "\n\nExporting reviewed data to {}...",
             config.data.output_path
         );
-        let all_reviewed_video_data = Arc::try_unwrap(all_reviewed_video_data)
-            .unwrap()
-            .into_inner()
-            .unwrap()
-            .unwrap_or_default();
+    
         if let Err(e) = export_reviewed_data(
             Path::new(&config.data.output_path),
             &all_reviewed_video_data,
@@ -227,14 +266,7 @@ fn main() {
                 dribble_events: events
                     .clone()
                     .iter()
-                    .map(|e| {
-                        let extra_frames_before = 30;
-                        let extra_frames_after = 90;
-                        let mut e = Into::<DribbleLabel>::into(e);
-                        e.start_frame = e.start_frame.saturating_sub(extra_frames_before);
-                        e.end_frame = e.end_frame.map(|f| f + extra_frames_after);
-                        e
-                    })
+                    .map(|e| Into::<DribbleLabel>::into(e))
                     .collect(),
             })
             .collect(),
@@ -284,7 +316,6 @@ fn detect_events(
     inner_rad: f64,
     outer_rad: f64,
 ) -> Option<(String, Vec<DribbleEvent>)> {
-
     let review_mode = config.general.review_mode.unwrap_or(false);
     let log_level = config.general.log_level.clone();
 
@@ -361,7 +392,15 @@ fn detect_events(
 
     let mut replay = false;
 
-    while cur_path.is_some() {
+    let mut current_frames = current_interval.clone();
+
+    while cur_path.is_some() && end != 0 {
+
+        if current_frames != current_interval {
+            println!("Displaying frames ({start}-{end})");
+            current_frames = current_interval.clone();
+        };
+        
         let image_path = cur_path.clone().unwrap();
         let image_name = cur_path
             .clone()?
@@ -393,7 +432,11 @@ fn detect_events(
                     println!("No more events to process (2)");
                     break;
                 }
-                current_interval = vid_events.remove(0);
+                current_interval = if !vid_events.is_empty() {
+                    vid_events.remove(0)
+                } else {
+                    (0, 0)
+                };
                 start = current_interval.0;
                 end = current_interval.1;
                 continue;
@@ -437,9 +480,17 @@ fn detect_events(
 
         let potential_event = dribble_detector.process_frame(dribble_frame);
 
-        if let Some(dribble_event) = potential_event.clone() {
+        if let Some(mut dribble_event) = potential_event.clone() {
             if !replay && (dribble_event.detected_dribble || dribble_event.detected_tackle) {
-                println!("\n\n\nDetected dribble event: {:?}", dribble_event.frames);
+                // println!("\n\n\nDetected dribble event: {:?}", dribble_event.frames);
+                let extra_frames_before = 10;
+                let extra_frames_after = 20;
+                dribble_event.start_frame = dribble_event.start_frame.saturating_sub(extra_frames_before);
+
+                if let Some(cur_end) = dribble_event.end_frame {
+                    dribble_event.end_frame = Some(cur_end + extra_frames_after);
+                };
+
                 detected_events.push(dribble_event);
             }
         }
@@ -474,15 +525,37 @@ fn detect_events(
             }
             KeyboardInput::PreviousFrame => {}
             KeyboardInput::NextClip => {
+                cur_path = iterator.next();
+                replay = false;
+
+                current_interval = if !vid_events.is_empty() {
+                    vid_events.remove(0)
+                } else {
+                    (0, 0)
+                };
+
+                start = current_interval.0;
+                end = current_interval.1;
+
                 visualization_builder
                     .finish()
                     .expect("Failed to finish visualization");
-
-                break;
             }
             KeyboardInput::Dribble => {
                 if review_mode {
                     println!("Adding dribble event");
+                    cur_path = iterator.next();
+                    replay = false;
+
+                    current_interval = if !vid_events.is_empty() {
+                        vid_events.remove(0)
+                    } else {
+                        (0, 0)
+                    };
+
+                    start = current_interval.0;
+                    end = current_interval.1;
+
                     let filtered_video_data = filter_video_data(video_data.clone(), start, end);
                     reviewed_video_data
                         .as_mut()
@@ -496,7 +569,7 @@ fn detect_events(
                         .as_mut()
                         .unwrap()
                         .push(reviewed_video_data.clone().unwrap());
-                    break;
+                    continue;
                 }
             }
             KeyboardInput::Tackle => {
@@ -508,6 +581,17 @@ fn detect_events(
                         .unwrap()
                         .tackle_data
                         .push(filtered_video_data);
+                    cur_path = iterator.next();
+                    replay = false;
+
+                    current_interval = if !vid_events.is_empty() {
+                        vid_events.remove(0)
+                    } else {
+                        (0, 0)
+                    };
+
+                    start = current_interval.0;
+                    end = current_interval.1;
 
                     all_reviewed_video_data
                         .lock()
@@ -515,18 +599,30 @@ fn detect_events(
                         .as_mut()
                         .unwrap()
                         .push(reviewed_video_data.clone().unwrap());
-                    break;
+                    continue;
                 }
             }
             KeyboardInput::None => {
                 if review_mode {
                     println!("Adding other event");
                     let filtered_video_data = filter_video_data(video_data.clone(), start, end);
+
                     reviewed_video_data
                         .as_mut()
                         .unwrap()
                         .other_data
                         .push(filtered_video_data);
+                    cur_path = iterator.next();
+                    replay = false;
+
+                    current_interval = if !vid_events.is_empty() {
+                        vid_events.remove(0)
+                    } else {
+                        (0, 0)
+                    };
+
+                    start = current_interval.0;
+                    end = current_interval.1;
 
                     all_reviewed_video_data
                         .lock()
@@ -534,15 +630,14 @@ fn detect_events(
                         .as_mut()
                         .unwrap()
                         .push(reviewed_video_data.clone().unwrap());
-                    break;
+
+                    continue;
                 }
             }
         }
 
+        // Replay clip
         if review_mode && (frame_num >= end as usize || cur_path.is_none()) {
-            if !replay {
-                println!("Displaying frames ({start}-{end})");
-            }
 
             iterator = iterator_start
                 .clone()
@@ -568,10 +663,12 @@ fn detect_events(
 }
 
 /// Merges consecutive dribble events if the start of one event
-/// is immediately after (or the same as) the end of the previous event,
+/// is immediately after (or within max_event_gap) the end of the previous event,
 /// and both events are of the same type (dribble or tackle).
 fn combine_consecutive_events(mut events: Vec<DribbleEvent>) -> Vec<DribbleEvent> {
     events.sort_by_key(|e| e.start_frame);
+
+    let max_event_gap = 8;
 
     let mut merged: Vec<DribbleEvent> = Vec::new();
     for event in events {
@@ -580,13 +677,13 @@ fn combine_consecutive_events(mut events: Vec<DribbleEvent>) -> Vec<DribbleEvent
                 let same_type = (last.detected_tackle && event.detected_tackle)
                     || (last.detected_dribble && event.detected_dribble);
 
-                if (event.start_frame <= last_end + 1) && same_type {
+                if event.start_frame <= last_end + max_event_gap && same_type {
                     last.extend(&event);
 
                     if let Some(end) = event.end_frame {
                         last.end_frame = Some(end);
                     }
-                    // If the new event is a tackle or a contested dribble, keep that info
+
                     last.detected_tackle |= event.detected_tackle;
                     last.detected_dribble |= event.detected_dribble;
                     last.ever_contested |= event.ever_contested;
@@ -594,11 +691,11 @@ fn combine_consecutive_events(mut events: Vec<DribbleEvent>) -> Vec<DribbleEvent
                 }
             }
         }
-        // If not mergeable, push as a new event
         merged.push(event);
     }
     merged
 }
+
 
 fn filter_video_data(video_data: VideoData, start: u32, end: u32) -> VideoData {
     let mut filtered_data = VideoData::default();
