@@ -1,7 +1,7 @@
 use super::dribble_models::{Ball, Player};
 use crate::config::Config;
 use crate::data::models::Annotation;
-use crate::utils::annotation_calculations::calculate_bbox_pitch_center;
+use crate::utils::annotation_calculations::calculate_bbox_pitch_coordinates;
 use std::collections::HashMap;
 
 pub fn get_ball_model(
@@ -19,7 +19,7 @@ pub fn get_ball_model(
         .filter_map(|a| {
             if a.category_id == ball_id {
                 let (x, y) =
-                    calculate_bbox_pitch_center(a.clone(), config.dribbling_detection.use_2d)?;
+                    calculate_bbox_pitch_coordinates(a.clone(), config.dribbling_detection.use_2d)?;
                 Some(Ball { x: x, y: y })
             } else {
                 None
@@ -48,7 +48,7 @@ pub fn get_player_models(
         .filter_map(|a| {
             if a.category_id == player_id {
                 let (x, y) =
-                    calculate_bbox_pitch_center(a.clone(), config.dribbling_detection.use_2d)?;
+                    calculate_bbox_pitch_coordinates(a.clone(), config.dribbling_detection.use_2d)?;
                 Some(Player {
                     id: a.track_id.unwrap_or(u32::MAX).clone(),
                     x: x,

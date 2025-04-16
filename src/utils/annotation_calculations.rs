@@ -1,4 +1,7 @@
-use crate::data::models::{Annotation, Attribute};
+use crate::{
+    data::models::{Annotation, Attribute, BboxImage, BboxPitch},
+    dribbling_detection::dribble_models::Player,
+};
 use opencv::core::Scalar;
 use rand::RngCore;
 use std::collections::HashMap;
@@ -114,15 +117,15 @@ pub fn calculate_annotation_distance(
     annotation_2: Annotation,
     use_2d: bool,
 ) -> Option<f64> {
-    let coords_1 = calculate_bbox_pitch_center(annotation_1, use_2d)?;
-    let coords_2 = calculate_bbox_pitch_center(annotation_2, use_2d)?;
+    let coords_1 = calculate_bbox_pitch_coordinates(annotation_1, use_2d)?;
+    let coords_2 = calculate_bbox_pitch_coordinates(annotation_2, use_2d)?;
 
     Some(((coords_2.0 - coords_1.0).powi(2) + (coords_2.1 - coords_1.1).powi(2)).sqrt())
 }
 
 /// Calculate the center of the BboxPitch
 /// If `use_2d` is true, get the 2D center, if false get the bottom-center of the bounding box
-pub fn calculate_bbox_pitch_center(annotation: Annotation, use_2d: bool) -> Option<(f64, f64)> {
+pub fn calculate_bbox_pitch_coordinates(annotation: Annotation, use_2d: bool) -> Option<(f64, f64)> {
     let (x_center, y_center) = if use_2d {
         let bbox = annotation.bbox_pitch?;
         // Calculate the geometric center
@@ -132,7 +135,10 @@ pub fn calculate_bbox_pitch_center(annotation: Annotation, use_2d: bool) -> Opti
         (x_center, y_center)
     } else {
         let bbox = annotation.bbox_image?;
-        (bbox.x_center, bbox.y)
+        // Uses the bottom of the box, to use the feet of the player when not using 2d
+        let x_center = bbox.x + (bbox.w / 2.0);
+        let y_bottom = bbox.y + bbox.h;
+        (x_center, y_bottom)
     };
 
     Some((x_center, y_center))
@@ -184,7 +190,7 @@ mod tests {
     #[test]
     fn test_calculate_bbox_pitch_center() {
         let annotation = create_annotation(0.0, 0.0, 2.0, 2.0);
-        let center = calculate_bbox_pitch_center(annotation, true).unwrap();
+        let center = calculate_bbox_pitch_coordinates(annotation, true).unwrap();
         assert_eq!(center, (1.0, 1.0));
     }
 
