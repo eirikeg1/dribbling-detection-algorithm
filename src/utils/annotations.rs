@@ -28,11 +28,13 @@ pub fn draw_annotations(
     // Draw main 2D boxes
     for annotation in &annotations {
         if let Some(bbox_image) = &annotation.bbox_image {
+            let track_id = if annotation.category_id == *ball_id { None } else { annotation.track_id };
             draw_bbox_image(
                 frame,
                 bbox_image,
                 scale_factor,
                 get_annotation_color(annotation, categories),
+                track_id,
             )?;
         }
     }
@@ -139,12 +141,14 @@ pub fn draw_annotations(
         // Draw basic positions for players/others on minimap if needed.
         if let Some(bbox_pitch) = &annotation.bbox_pitch {
             let color = get_annotation_color(annotation, categories);
+            let track_id = annotation.track_id;
             draw_pitch_point_on_minimap(
                 &mut minimap,
                 bbox_pitch.x_bottom_middle,
                 bbox_pitch.y_bottom_middle,
                 config,
                 color,
+                track_id,
             )?;
         }
     }
@@ -168,14 +172,35 @@ fn draw_bbox_image(
     bb: &BboxImage,
     scale: f64,
     color: Scalar,
+    number: Option<u32>,
 ) -> opencv::Result<()> {
     let x = (bb.x * scale) as i32;
     let y = (bb.y * scale) as i32;
     let w = (bb.w * scale) as i32;
     let h = (bb.h * scale) as i32;
-    imgproc::rectangle(frame, Rect::new(x, y, w, h), color, 1, imgproc::LINE_8, 0)?;
+
+    // Draw the bounding box
+    let rect = Rect::new(x, y, w, h);
+    imgproc::rectangle(frame, rect, color, 1, imgproc::LINE_8, 0)?;
+
+    if let Some(number) = number {
+        let text_point = core::Point::new(x + 5, y + 5);
+        imgproc::put_text(
+            frame,
+            &number.to_string(),
+            text_point,
+            imgproc::FONT_HERSHEY_SIMPLEX,
+            0.5,
+            Scalar::new(0.0, 0.0, 0.0, 255.0),
+            1,
+            imgproc::LINE_8,
+            false,
+        )?;
+    }
+
     Ok(())
 }
+
 
 // fn draw_bbox_image(
 //     frame: &mut Mat,
@@ -199,6 +224,7 @@ fn draw_pitch_point_on_minimap(
     pitch_y: f64,
     config: &Config,
     color: Scalar,
+    number: Option<u32>
 ) -> opencv::Result<()> {
     let minimap_height = config.visualization.minimap_height;
     let minimap_width = config.visualization.minimap_width;
@@ -214,6 +240,21 @@ fn draw_pitch_point_on_minimap(
     // Draw an opaque dot for the player's (or ball's) position
     let point = core::Point::new(mx, my);
     imgproc::circle(minimap, point, 5, color, -1, imgproc::LINE_8, 0)?;
+
+    if let Some(number) = number {
+        let text_point = core::Point::new(mx + 5, my + 5);
+        imgproc::put_text(
+            minimap,
+            &number.to_string(),
+            text_point,
+            imgproc::FONT_HERSHEY_SIMPLEX,
+            0.5,
+            Scalar::new(0.0, 0.0, 0.0, 255.0),
+            1,
+            imgproc::LINE_8,
+            false,
+        )?;
+    }
 
     Ok(())
 }
