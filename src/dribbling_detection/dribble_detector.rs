@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::config::Config;
+
 use super::dribble_models::{DribbleEvent, DribbleFrame, Player};
 
 /// Detects dribble events. An event is started when a defender enters the outer radius,
@@ -29,6 +31,7 @@ pub struct DribbleDetector {
     // Counters for the number of frames defenders have been in the respective zones (once active).
     active_outer_frames: u32,
     active_inner_frames: u32,
+    pub config: Config,
 }
 
 impl DribbleDetector {
@@ -48,6 +51,7 @@ impl DribbleDetector {
         outer_threshold: u32,
         outer_in_threshold: u32,
         outer_out_threshold: u32,
+        config: Config,
     ) -> Self {
         Self {
             video_name,
@@ -63,6 +67,7 @@ impl DribbleDetector {
             active_event: None,
             active_outer_frames: 0,
             active_inner_frames: 0,
+            config,
         }
     }
 
@@ -128,11 +133,11 @@ impl DribbleDetector {
 
     /// Check whether we have defenders inside the outer zone for the current frame.
     fn defenders_in_outer_zone(&self, frame: &DribbleFrame) -> bool {
-        if let Some(holder) = frame
-            .players
-            .iter()
-            .find(|p| Self::distance((p.x, p.y), (frame.ball.x, frame.ball.y)) < self.inner_rad)
-        {
+        if let Some(holder) = frame.players.iter().min_by(|p1, p2| {
+            let p1_dis = Self::distance((p1.x, p1.y), (frame.ball.x, frame.ball.y));
+            let p2_dis = Self::distance((p2.x, p2.y), (frame.ball.x, frame.ball.y));
+            p1_dis.partial_cmp(&p2_dis).unwrap()
+        }) {
             let (defenders, _inner_defenders) =
                 Self::calc_defenders(&frame.players, holder, self.outer_rad, self.inner_rad);
             return !defenders.is_empty();
@@ -169,11 +174,15 @@ impl DribbleDetector {
     /// - There's a ball holder (distance to ball < inner_rad),
     /// - The outer zone is active (which we handle via hysteresis above).
     fn try_start_event(&mut self, frame: &DribbleFrame) -> Option<DribbleEvent> {
-        if let Some(holder) = frame
-            .players
-            .iter()
-            .find(|p| Self::distance((p.x, p.y), (frame.ball.x, frame.ball.y)) < self.inner_rad)
-        {
+        if let Some(holder) = frame.players.iter().min_by(|p1, p2| {
+            let p1_dis = Self::distance((p1.x, p1.y), (frame.ball.x, frame.ball.y));
+            let p2_dis = Self::distance((p2.x, p2.y), (frame.ball.x, frame.ball.y));
+            p1_dis.partial_cmp(&p2_dis).unwrap()
+        }) {
+            if Self::distance((holder.x, holder.y), (frame.ball.x, frame.ball.y)) > self.outer_rad {
+                return None;
+            }
+
             let (defenders, inner_defenders) =
                 Self::calc_defenders(&frame.players, holder, self.outer_rad, self.inner_rad);
 
@@ -232,7 +241,7 @@ impl DribbleDetector {
                 p.id != event.possession_holder
                     && Self::distance((p.x, p.y), (frame.ball.x, frame.ball.y)) < self.inner_rad
             }) {
-                if old_holder_ball_dist > self.inner_rad {
+                if old_holder_ball_dist > self.outer_rad {
                     // Possession change.
                     event.end_frame = Some(frame.frame_number);
                     event.finished = true;
