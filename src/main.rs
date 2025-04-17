@@ -484,7 +484,7 @@ fn detect_events(
             if !replay && (dribble_event.detected_dribble || dribble_event.detected_tackle) {
                 // println!("\n\n\nDetected dribble event: {:?}", dribble_event.frames);
                 let extra_frames_before = 10;
-                let extra_frames_after = 20;
+                let extra_frames_after = 45;
                 dribble_event.start_frame = dribble_event.start_frame.saturating_sub(extra_frames_before);
 
                 if let Some(cur_end) = dribble_event.end_frame {
