@@ -1,7 +1,4 @@
-use crate::{
-    data::models::{Annotation, Attribute, BboxImage, BboxPitch},
-    dribbling_detection::dribble_models::Player,
-};
+use crate::data::models::{Annotation, Attribute};
 use opencv::core::Scalar;
 use rand::RngCore;
 use std::collections::HashMap;
@@ -125,7 +122,10 @@ pub fn calculate_annotation_distance(
 
 /// Calculate the center of the BboxPitch
 /// If `use_2d` is true, get the 2D center, if false get the bottom-center of the bounding box
-pub fn calculate_bbox_pitch_coordinates(annotation: Annotation, use_2d: bool) -> Option<(f64, f64)> {
+pub fn calculate_bbox_pitch_coordinates(
+    annotation: Annotation,
+    use_2d: bool,
+) -> Option<(f64, f64)> {
     let (x_center, y_center) = if use_2d {
         let bbox = annotation.bbox_pitch?;
         // Calculate the geometric center
