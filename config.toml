@@ -1,19 +1,21 @@
 [general]
-review_mode = true # Allows user to download the data as structured annotated data
+review_mode = false # Allows user to download the data as structured annotated data
 num_cores = 10  # Number of CPU cores to be used. Is set to 1 if video mode is "display"
 log_level = "debug"  # Possible values: "debug", "info", "warn", "error"
-video_mode = "display" # Possible values: "download", "display" or "none" (If using SSH display might be slow)
+video_mode = "none" # Possible values: "download", "display" or "none" (If using SSH display might be slow)
 
 [dribbling_detection]
 use_2d = false # Whether to use homographically transformed 2d coordinates or image bounding boxes
-outer_threshold = 25 # Minumum number of frames in an event. Mainly to prevent predictions of jumping 2d coords
-inner_threshold = 12 # The time a player is within the inner threshold does not count to outer
+outer_threshold = 3 # Minumum number of frames in an event. Mainly to prevent predictions of jumping 2d coords
+inner_threshold = 4 # The time a player is within the inner threshold does not count to outer
 frame_skip = 1
-min_duration = 1.6  # Minimum duration for an action to be classified as dribbling
-inner_radius = 2.0 # Percent of screen from ball
-outer_radius = 3.5
-outer_in_threshold = 5
-outer_out_threshold = 5
+min_duration = 1.3  # Minimum duration for an action to be classified as dribbling
+inner_radius = 0.8 # Percent of screen from ball
+outer_radius = 2.7
+# inner_radius = 1.3 # Percent of screen from ball
+# outer_radius = 2.2
+outer_in_threshold = 2
+outer_out_threshold = 8
 ignore_person_classes = true
 ignore_teams = true
 
