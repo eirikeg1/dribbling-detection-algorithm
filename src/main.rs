@@ -221,23 +221,30 @@ fn main() {
             duration.num_minutes() % 60,
             duration.num_seconds() % 60
         );
-        
-        let total_dribbles: usize = all_reviewed_video_data.iter().map(|r| r.dribble_data.len()).sum();
-        let total_tackles: usize = all_reviewed_video_data.iter().map(|r| r.tackle_data.len()).sum();
-        let total_others: usize = all_reviewed_video_data.iter().map(|r| r.other_data.len()).sum();
+
+        let total_dribbles: usize = all_reviewed_video_data
+            .iter()
+            .map(|r| r.dribble_data.len())
+            .sum();
+        let total_tackles: usize = all_reviewed_video_data
+            .iter()
+            .map(|r| r.tackle_data.len())
+            .sum();
+        let total_others: usize = all_reviewed_video_data
+            .iter()
+            .map(|r| r.other_data.len())
+            .sum();
 
         println!(
             "Approved {} dribbles, {} tackles and disaproved {} events",
-            total_dribbles,
-            total_tackles,
-            total_others,
+            total_dribbles, total_tackles, total_others,
         );
 
         println!(
             "\n\nExporting reviewed data to {}...",
             config.data.output_path
         );
-    
+
         if let Err(e) = export_reviewed_data(
             Path::new(&config.data.output_path),
             &all_reviewed_video_data,
@@ -395,12 +402,11 @@ fn detect_events(
     let mut current_frames = current_interval.clone();
 
     while cur_path.is_some() && end != 0 {
-
         if current_frames != current_interval {
             println!("Displaying frames ({start}-{end})");
             current_frames = current_interval.clone();
         };
-        
+
         let image_path = cur_path.clone().unwrap();
         let image_name = cur_path
             .clone()?
@@ -483,9 +489,11 @@ fn detect_events(
         if let Some(mut dribble_event) = potential_event.clone() {
             if !replay && (dribble_event.detected_dribble || dribble_event.detected_tackle) {
                 // println!("\n\n\nDetected dribble event: {:?}", dribble_event.frames);
-                let extra_frames_before = 10;
-                let extra_frames_after = 45;
-                dribble_event.start_frame = dribble_event.start_frame.saturating_sub(extra_frames_before);
+                let extra_frames_before = 60;
+                let extra_frames_after = 60;
+                dribble_event.start_frame = dribble_event
+                    .start_frame
+                    .saturating_sub(extra_frames_before);
 
                 if let Some(cur_end) = dribble_event.end_frame {
                     dribble_event.end_frame = Some(cur_end + extra_frames_after);
@@ -544,6 +552,14 @@ fn detect_events(
             KeyboardInput::Dribble => {
                 if review_mode {
                     println!("Adding dribble event");
+
+                    let filtered_video_data = filter_video_data(video_data.clone(), start, end);
+                    reviewed_video_data
+                        .as_mut()
+                        .unwrap()
+                        .dribble_data
+                        .push(filtered_video_data);
+
                     cur_path = iterator.next();
                     replay = false;
 
@@ -555,13 +571,6 @@ fn detect_events(
 
                     start = current_interval.0;
                     end = current_interval.1;
-
-                    let filtered_video_data = filter_video_data(video_data.clone(), start, end);
-                    reviewed_video_data
-                        .as_mut()
-                        .unwrap()
-                        .dribble_data
-                        .push(filtered_video_data);
 
                     all_reviewed_video_data
                         .lock()
@@ -638,7 +647,6 @@ fn detect_events(
 
         // Replay clip
         if review_mode && (frame_num >= end as usize || cur_path.is_none()) {
-
             iterator = iterator_start
                 .clone()
                 // .skip(frame_num)
@@ -695,7 +703,6 @@ fn combine_consecutive_events(mut events: Vec<DribbleEvent>) -> Vec<DribbleEvent
     }
     merged
 }
-
 
 fn filter_video_data(video_data: VideoData, start: u32, end: u32) -> VideoData {
     let mut filtered_data = VideoData::default();
